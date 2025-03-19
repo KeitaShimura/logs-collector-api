@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    name: Run Fmt & Lint & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          go mod tidy
+          go mod download
+
+      - name: Run go fmt
+        run: |
+          fmt_output=$(gofmt -s -d .)
+          if [ -n "$fmt_output" ]; then
+            echo "Code is not formatted. Run 'gofmt -s -w .' to fix."
+            echo "$fmt_output"
+            exit 1
+          fi
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.0
+          args: --timeout=5m --verbose
+          cache: true
+
+      - name: Run Tests with Coverage
+        run: |
+          go test -v -race -cover ./...
