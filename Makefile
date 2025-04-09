@@ -36,15 +36,18 @@ build:
 run:
 	go run ${CMD_PACKAGES}
 
-# テスト実行（詳細出力付き）
-test:
-	go test -v ${ALL_PACKAGES}
+# 簡易テスト（レース検出・カバレッジなし、詳細出力あり）
+test-fast:
+	go test -v $(ALL_PACKAGES)
 
-# カバレッジ付きテストの実行とHTMLレポート出力
+# テスト実行（詳細出力 + カバレッジ + レース検出）
+test:
+	go test -v -race -cover $(ALL_PACKAGES)
+
+# カバレッジ付きテストの実行
 cover:
 	mkdir -p coverage
-	go test -cover ${ALL_PACKAGES} -coverprofile=coverage/cover.out
-	go tool cover -html=coverage/cover.out -o coverage/cover.html
+	go test -cover $(ALL_PACKAGES) -coverprofile=coverage/cover.out
 
 # コード生成（SQLBoilerによるDBモデル生成）
 generate:
