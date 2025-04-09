@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"sync"
 )
 
 // 公開用ログレベル定義
@@ -30,6 +31,7 @@ type LoggerImpl struct {
 	slog   *slog.Logger
 	writer io.Writer
 	level  slog.Level
+	mutex  sync.Mutex
 }
 
 // Option は LoggerImpl のオプション設定用関数
@@ -59,6 +61,7 @@ func NewLogger(options ...Option) Logger {
 		writer: os.Stdout,
 		level:  slog.LevelInfo,
 		slog:   nil,
+		mutex:  sync.Mutex{},
 	}
 
 	for _, opt := range options {
@@ -83,6 +86,9 @@ func (logger *LoggerImpl) rebuildLogger() {
 
 // SetLevel は動的にログレベルを変更する
 func (logger *LoggerImpl) SetLevel(level slog.Level) {
+	logger.mutex.Lock()
+	defer logger.mutex.Unlock()
+
 	logger.level = level
 	logger.rebuildLogger()
 }
