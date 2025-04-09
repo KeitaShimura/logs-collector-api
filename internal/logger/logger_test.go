@@ -128,16 +128,20 @@ func TestLogger_SetLevel_Twice(t *testing.T) {
 func TestLogger_ConcurrentSetLevel(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	log := logger.NewLogger(logger.WithWriter(&buf))
+	var buffer bytes.Buffer
+	log := logger.NewLogger(logger.WithWriter(&buffer))
 
-	wg := sync.WaitGroup{}
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func(lvl slog.Level) {
-			defer wg.Done()
-			log.SetLevel(lvl) // 並行で SetLevel を呼び出す
+	var waitGroup sync.WaitGroup
+
+	for range [10]int{} {
+		waitGroup.Add(1)
+
+		go func(level slog.Level) {
+			defer waitGroup.Done()
+
+			log.SetLevel(level) // 並行で SetLevel を呼び出す
 		}(slog.LevelDebug)
 	}
-	wg.Wait()
+
+	waitGroup.Wait()
 }
