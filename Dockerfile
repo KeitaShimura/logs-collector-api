@@ -1,4 +1,4 @@
-FROM golang:1.24.1-alpine AS dev
+FROM golang:1.24.2-alpine AS dev
 
 ENV ROOT=/go/src/app
 ENV CGO_ENABLED 0
@@ -16,7 +16,7 @@ RUN go mod tidy
 CMD ["go", "run", "./cmd/main.go"]
 
 
-FROM golang:1.24 AS builder
+FROM golang:1.24.2 AS builder
 
 ENV ROOT=/go/src/app
 WORKDIR ${ROOT}/cmd
@@ -32,7 +32,7 @@ RUN go mod tidy
 COPY . ${ROOT}
 RUN CGO_ENABLED=0 go build -o $ROOT/binary
 
-FROM gcr.io/distroless/base as prod
+FROM gcr.io/distroless/base AS prod
 
 ENV ROOT=/go/src/app
 WORKDIR ${ROOT}
