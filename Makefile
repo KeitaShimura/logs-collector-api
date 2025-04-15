@@ -5,7 +5,7 @@ SQLBOILER_OUTPUT := internal/infra/db/models                # SQLBoilerの出力
 SWAG_MAIN := cmd/main.go                                    # swag init でのエントリーポイント
 SWAG_OUT := docs                                            # Swagger ドキュメントの出力先ディレクトリ
 
-.PHONY: init format lint lint-fix build run test cover generate clean swagger migrate all
+.PHONY: init format lint lint-fix build run test cover generate clean swagger migrate create-migration all
 
 # すべての主要なタスクを順に実行
 all: format lint test build
@@ -65,3 +65,8 @@ swagger:
 # データベースマイグレーションの実行
 migrate:
 	go run internal/infra/db/migrations/migrate.go
+
+# 新しいマイグレーションファイルを作成する
+create-migration:
+	@read -p "Enter migration name: " name; \
+	migrate create -ext sql -dir internal/infra/db/migrations -format "20060102150405" $$name
