@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
+	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
 )
 
 var (
@@ -65,57 +65,15 @@ func (m *mockLogRepository) GetLogs(
 	return logs, nil
 }
 
-// logEntry はテスト用のログエントリ
-type logEntry struct {
-	msg  string
-	args []any
-}
+// --- setup ---
 
-// mockLogger は Logger を模倣するモック構造体
-type mockLogger struct {
-	infos  []logEntry
-	warns  []logEntry
-	errors []logEntry
-}
-
-// SetLevel はロガーのレベルを設定する（実際には使用しない）
-func (m *mockLogger) SetLevel(_ slog.Level) {}
-
-// Info は情報ログを記録する
-func (m *mockLogger) Info(msg string, args ...any) {
-	m.infos = append(m.infos, logEntry{msg: msg, args: args})
-}
-
-// Debug はデバッグログを記録する
-func (m *mockLogger) Debug(msg string, args ...any) {
-	m.infos = append(m.infos, logEntry{msg: msg, args: args})
-}
-
-// Warn は警告ログを記録する
-func (m *mockLogger) Warn(msg string, args ...any) {
-	m.warns = append(m.warns, logEntry{msg: msg, args: args})
-}
-
-// Error はエラーログを記録する
-func (m *mockLogger) Error(msg string, err error, args ...any) {
-	if err != nil {
-		args = append(args, slog.String("error", err.Error()))
-	}
-
-	m.errors = append(m.errors, logEntry{msg: msg, args: args})
-}
-
-// setup はテスト用のモックリポジトリ、ロガー、ユースケースを初期化する
-func setup() (*mockLogRepository, *mockLogger, *usecase.LogUseCase) {
+// setup はモックリポジトリ、モックロガー、ユースケースを初期化して返す
+func setup() (*mockLogRepository, *testutil.MockLogger, *usecase.LogUseCase) {
 	mockRepo := new(mockLogRepository)
-	logger := &mockLogger{
-		infos:  []logEntry{},
-		warns:  []logEntry{},
-		errors: []logEntry{},
-	}
-	uc := usecase.NewLogUseCase(mockRepo, logger)
+	mockLogger := testutil.NewMockLogger()
+	uc := usecase.NewLogUseCase(mockRepo, mockLogger)
 
-	return mockRepo, logger, uc
+	return mockRepo, mockLogger, uc
 }
 
 // --- SendLog Tests ---
@@ -147,9 +105,9 @@ func TestLogUseCase_SendLog_Success(t *testing.T) {
 
 	// ログが保存前後で2回記録されていることを確認
 	// 保存前のログと保存後のログがそれぞれ1回ずつ記録される
-	assert.Len(t, logger.infos, 2)
-	assert.Contains(t, logger.infos[0].msg, "Saving log entry")
-	assert.Contains(t, logger.infos[1].msg, "Log entry saved successfully")
+	assert.Len(t, logger.Infos, 2)
+	assert.Contains(t, logger.Infos[0].Msg, "Saving log entry")
+	assert.Contains(t, logger.Infos[1].Msg, "Log entry saved successfully")
 }
 
 // TestLogUseCase_SendLog_ValidationError はログエントリにバリデーションエラーがある場合のテスト
@@ -210,8 +168,8 @@ func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 
 	// エラーログが1件記録されていることを確認
 	// "Failed to save log entry" のメッセージが含まれているか確認
-	assert.Len(t, logger.errors, 1)
-	assert.Contains(t, logger.errors[0].msg, "Failed to save log entry")
+	assert.Len(t, logger.Errors, 1)
+	assert.Contains(t, logger.Errors[0].Msg, "Failed to save log entry")
 }
 
 // --- GetLogs Tests ---
@@ -243,7 +201,7 @@ func TestLogUseCase_GetLogs_Success(t *testing.T) {
 	assert.Equal(t, expected, logs)
 
 	// ログが2回記録されていることを確認（取得開始と取得成功）
-	assert.Len(t, logger.infos, 2)
+	assert.Len(t, logger.Infos, 2)
 }
 
 // TestLogUseCase_GetLogs_InvalidArgs は無効な引数が渡された場合のテスト
@@ -281,8 +239,8 @@ func TestLogUseCase_GetLogs_RepositoryError(t *testing.T) {
 	assert.Equal(t, codes.Internal, st.Code())
 
 	// エラーログが1件記録されていることを確認
-	assert.Len(t, logger.errors, 1)
-	assert.Contains(t, logger.errors[0].msg, "Failed to get logs")
+	assert.Len(t, logger.Errors, 1)
+	assert.Contains(t, logger.Errors[0].Msg, "Failed to get logs")
 }
 
 // TestLogUseCase_GetLogs_NotFound はログが見つからなかった場合のテスト
