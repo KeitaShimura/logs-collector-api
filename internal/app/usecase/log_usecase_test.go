@@ -18,6 +18,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
 )
 
+// 共通エラー定義
 var (
 	errMockDB              = errors.New("db error")
 	errMockLogsNil         = errors.New("mock GetLogs returned nil logs")
