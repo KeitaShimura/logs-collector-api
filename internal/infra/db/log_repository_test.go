@@ -18,6 +18,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
 )
 
+// 共通エラー定義
 var (
 	errInsert = errors.New("insert error")
 	errQuery  = errors.New("db failure")
