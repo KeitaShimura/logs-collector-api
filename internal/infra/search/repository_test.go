@@ -82,7 +82,7 @@ func TestLogSearcher_IndexLog_Success(t *testing.T) {
 	assert.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
 }
 
-// TestLogSearcher_IndexLog_MarshalError はログデータのマシュアル処理でエラーが発生する場合のテスト
+// TestLogSearcher_IndexLog_MarshalError はログデータのマーシャル処理でエラーが発生する場合のテスト
 func TestLogSearcher_IndexLog_MarshalError(t *testing.T) {
 	t.Parallel()
 
