@@ -12,6 +12,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/logger"
 )
 
+// 共通エラー定義
 var errSomethingBroke = errors.New("something broke")
 
 // TestLogger_InfoWarnErrorDebugOutput は各ログレベルの出力内容を検証するテスト
