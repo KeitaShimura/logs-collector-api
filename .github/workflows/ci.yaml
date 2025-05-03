@@ -43,8 +43,8 @@ jobs:
         with:
           version: v1.64
           args: --timeout=5m --verbose
-          skip-cache: false
-          skip-save-cache: false
+          skip-cache: true
+          skip-save-cache: true
 
       - name: Run Tests with Coverage
         run: |

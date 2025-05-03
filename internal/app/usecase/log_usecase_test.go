@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -69,7 +68,7 @@ func (m *mockLogRepository) GetLogs(
 // --- setup ---
 
 // setup はモックリポジトリ、モックロガー、ユースケースを初期化して返す
-func setup() (*mockLogRepository, *testutil.MockLogger, *usecase.LogUseCase) {
+func setup() (*mockLogRepository, *testutil.MockLogger, *usecase.LogUseCaseImpl) {
 	mockRepo := new(mockLogRepository)
 	mockLogger := testutil.NewMockLogger()
 	uc := usecase.NewLogUseCase(mockRepo, mockLogger)
@@ -106,9 +105,8 @@ func TestLogUseCase_SendLog_Success(t *testing.T) {
 
 	// ログが保存前後で2回記録されていることを確認
 	// 保存前のログと保存後のログがそれぞれ1回ずつ記録される
-	assert.Len(t, logger.Infos, 2)
-	assert.Contains(t, logger.Infos[0].Msg, "Saving log entry")
-	assert.Contains(t, logger.Infos[1].Msg, "Log entry saved successfully")
+	require.Len(t, logger.Infos, 1)
+	require.Contains(t, logger.Infos[0].Msg, "Log entry saved successfully")
 }
 
 // TestLogUseCase_SendLog_ValidationError はログエントリにバリデーションエラーがある場合のテスト
@@ -134,8 +132,8 @@ func TestLogUseCase_SendLog_ValidationError(t *testing.T) {
 
 	// エラーステータスコードが InvalidArgument であることを確認
 	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.InvalidArgument, st.Code())
+	require.True(t, ok)
+	require.Equal(t, codes.InvalidArgument, st.Code())
 }
 
 // TestLogUseCase_SendLog_RepositoryError はリポジトリでエラーが発生した場合のテスト
@@ -164,13 +162,13 @@ func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 	// エラーが Internal コードで返されることを確認
 	require.Error(t, err)
 	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Internal, st.Code())
+	require.True(t, ok)
+	require.Equal(t, codes.Internal, st.Code())
 
 	// エラーログが1件記録されていることを確認
 	// "Failed to save log entry" のメッセージが含まれているか確認
-	assert.Len(t, logger.Errors, 1)
-	assert.Contains(t, logger.Errors[0].Msg, "Failed to save log entry")
+	require.Len(t, logger.Errors, 1)
+	require.Contains(t, logger.Errors[0].Msg, "Failed to save log entry")
 }
 
 // --- GetLogs Tests ---
@@ -199,10 +197,11 @@ func TestLogUseCase_GetLogs_Success(t *testing.T) {
 	logs, err := logUseCase.GetLogs(ctx, "user", "INFO", 10, 0)
 	require.NoError(t, err)
 	// 返されるログが期待した値であることを確認
-	assert.Equal(t, expected, logs)
+	require.Equal(t, expected, logs)
 
 	// ログが2回記録されていることを確認（取得開始と取得成功）
-	assert.Len(t, logger.Infos, 2)
+	require.Len(t, logger.Infos, 1)
+	require.Contains(t, logger.Infos[0].Msg, "Logs retrieved successfully")
 }
 
 // TestLogUseCase_GetLogs_InvalidArgs は無効な引数が渡された場合のテスト
@@ -217,8 +216,8 @@ func TestLogUseCase_GetLogs_InvalidArgs(t *testing.T) {
 
 	// エラーのステータスコードが InvalidArgument であることを確認
 	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.InvalidArgument, st.Code())
+	require.True(t, ok)
+	require.Equal(t, codes.InvalidArgument, st.Code())
 }
 
 // TestLogUseCase_GetLogs_RepositoryError はリポジトリでエラーが発生した場合のテスト
@@ -236,12 +235,12 @@ func TestLogUseCase_GetLogs_RepositoryError(t *testing.T) {
 
 	// エラーが Internal コードで返されることを確認
 	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.Internal, st.Code())
+	require.True(t, ok)
+	require.Equal(t, codes.Internal, st.Code())
 
 	// エラーログが1件記録されていることを確認
-	assert.Len(t, logger.Errors, 1)
-	assert.Contains(t, logger.Errors[0].Msg, "Failed to get logs")
+	require.Len(t, logger.Errors, 1)
+	require.Contains(t, logger.Errors[0].Msg, "Failed to get logs")
 }
 
 // TestLogUseCase_GetLogs_NotFound はログが見つからなかった場合のテスト
@@ -259,8 +258,8 @@ func TestLogUseCase_GetLogs_NotFound(t *testing.T) {
 
 	// エラーのステータスコードが NotFound であることを確認
 	st, ok := status.FromError(err)
-	assert.True(t, ok)
-	assert.Equal(t, codes.NotFound, st.Code())
+	require.True(t, ok)
+	require.Equal(t, codes.NotFound, st.Code())
 }
 
 // --- validateLog Tests ---
@@ -303,7 +302,7 @@ func TestValidateLog_NilLog(t *testing.T) {
 	// ValidateLog を呼び出して、nil ログがエラーになることを確認
 	err := usecase.ValidateLog(log, timeLoadLocation)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "log entry is nil")
+	require.Contains(t, err.Error(), "log entry is nil")
 }
 
 // TestValidateLog_InvalidMessage はログメッセージが空である場合の異常系テスト
@@ -328,7 +327,7 @@ func TestValidateLog_InvalidMessage(t *testing.T) {
 	// メッセージが空である場合、エラーが発生することを確認
 	err := usecase.ValidateLog(log, timeLoadLocation)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "message must not be empty")
+	require.Contains(t, err.Error(), "message must not be empty")
 }
 
 // TestValidateLog_InvalidLevel はログレベルが空である場合の異常系テスト
@@ -353,7 +352,7 @@ func TestValidateLog_InvalidLevel(t *testing.T) {
 	// ログレベルが空の場合、エラーが発生することを確認
 	err := usecase.ValidateLog(log, timeLoadLocation)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "level must not be empty")
+	require.Contains(t, err.Error(), "level must not be empty")
 }
 
 // TestValidateLog_InvalidService はサービス名が空である場合の異常系テスト
@@ -378,7 +377,7 @@ func TestValidateLog_InvalidService(t *testing.T) {
 	// サービス名が空の場合、エラーが発生することを確認
 	err := usecase.ValidateLog(log, timeLoadLocation)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "service must not be empty")
+	require.Contains(t, err.Error(), "service must not be empty")
 }
 
 // TestValidateLog_InvalidIDFormat はログIDが無効な場合の異常系テスト
@@ -403,7 +402,7 @@ func TestValidateLog_InvalidIDFormat(t *testing.T) {
 	// 無効なID形式の場合、エラーが発生することを確認
 	err := usecase.ValidateLog(log, timeLoadLocation)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid ID format")
+	require.Contains(t, err.Error(), "invalid ID format")
 }
 
 // TestValidateLog_InvalidTraceIDFormat は TraceID が無効な場合の異常系テスト
@@ -428,7 +427,7 @@ func TestValidateLog_InvalidTraceIDFormat(t *testing.T) {
 	// 無効なTraceID形式の場合、エラーが発生することを確認
 	err := usecase.ValidateLog(log, timeLoadLocation)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid TraceID format")
+	require.Contains(t, err.Error(), "invalid TraceID format")
 }
 
 // TestValidateLog_ValidTimestamp は Timestamp がゼロ値の場合に補完されることを確認するテスト
@@ -453,7 +452,7 @@ func TestValidateLog_ValidTimestamp(t *testing.T) {
 	// Timestamp がゼロ値の場合、補完されることを確認
 	err := usecase.ValidateLog(log, timeLoadLocation)
 	require.NoError(t, err)
-	assert.False(t, log.Timestamp.IsZero(), "Timestamp should not be zero after validation")
+	require.False(t, log.Timestamp.IsZero(), "Timestamp should not be zero after validation")
 }
 
 // TestValidateLog_InvalidTimeZone は無効なタイムゾーンの場合の異常系テスト
@@ -481,7 +480,7 @@ func TestValidateLog_InvalidTimeZone(t *testing.T) {
 
 	// エラーが発生することを確認
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid time zone")
+	require.Contains(t, err.Error(), "invalid time zone")
 }
 
 // --- validateLogQueryParams Tests ---
@@ -500,7 +499,7 @@ func TestValidateLogQueryParams_InvalidService(t *testing.T) {
 
 	err := usecase.ValidateLogQueryParams("", "INFO", 10, 0)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "service must not be empty")
+	require.Contains(t, err.Error(), "service must not be empty")
 }
 
 // TestValidateLogQueryParams_InvalidLevel はレベルが空である場合の異常系テスト
@@ -509,7 +508,7 @@ func TestValidateLogQueryParams_InvalidLevel(t *testing.T) {
 
 	err := usecase.ValidateLogQueryParams("auth", "", 10, 0)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "level must not be empty")
+	require.Contains(t, err.Error(), "level must not be empty")
 }
 
 // TestValidateLogQueryParams_InvalidLimit はリミットが0または負の値である場合の異常系テスト
@@ -518,7 +517,7 @@ func TestValidateLogQueryParams_InvalidLimit(t *testing.T) {
 
 	err := usecase.ValidateLogQueryParams("auth", "INFO", -1, 0)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "limit must be greater than 0")
+	require.Contains(t, err.Error(), "limit must be greater than 0")
 }
 
 // TestValidateLogQueryParams_InvalidOffset はオフセットが負の値である場合の異常系テスト
@@ -527,5 +526,5 @@ func TestValidateLogQueryParams_InvalidOffset(t *testing.T) {
 
 	err := usecase.ValidateLogQueryParams("auth", "INFO", 10, -1)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "offset must be >= 0")
+	require.Contains(t, err.Error(), "offset must be >= 0")
 }

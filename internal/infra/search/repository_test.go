@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/infra/search"
@@ -18,7 +17,7 @@ import (
 // 共通エラー定義
 var errMockIndexError = errors.New("index error")
 
-// --- モック ---
+// --- Mocks ---
 
 // mockESClient は Elasticsearch クライアントのモック
 type mockESClient struct {
@@ -47,7 +46,7 @@ func (e *errorCloser) Close() error {
 	return nil
 }
 
-// --- テスト ---
+// --- IndexLog Tests ---
 
 // TestLogSearcher_IndexLog_Success はログが正常にインデックスされる場合のテスト
 func TestLogSearcher_IndexLog_Success(t *testing.T) {
@@ -78,8 +77,8 @@ func TestLogSearcher_IndexLog_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// ログに正常メッセージが記録されていることを確認
-	assert.Len(t, mockLogger.Infos, 1)
-	assert.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
+	require.Len(t, mockLogger.Infos, 1)
+	require.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
 }
 
 // TestLogSearcher_IndexLog_MarshalError はログデータのマーシャル処理でエラーが発生する場合のテスト
@@ -104,7 +103,7 @@ func TestLogSearcher_IndexLog_MarshalError(t *testing.T) {
 	require.Error(t, err)
 
 	// 返却されたエラーメッセージに期待する内容が含まれていることを確認
-	assert.Contains(t, err.Error(), "failed to marshal log")
+	require.Contains(t, err.Error(), "failed to marshal log")
 }
 
 // TestLogSearcher_IndexLog_IndexError はElasticsearchへのインデックスリクエストでエラーが発生する場合のテスト
@@ -131,7 +130,7 @@ func TestLogSearcher_IndexLog_IndexError(t *testing.T) {
 	require.Error(t, err)
 
 	// 返却されたエラーメッセージに期待する内容が含まれていることを確認
-	assert.Contains(t, err.Error(), "failed to send index request")
+	require.Contains(t, err.Error(), "failed to send index request")
 }
 
 // TestLogSearcher_IndexLog_ResponseError はElasticsearchのレスポンスでエラーが返される場合のテスト
@@ -162,7 +161,7 @@ func TestLogSearcher_IndexLog_ResponseError(t *testing.T) {
 	require.Error(t, err)
 
 	// 返却されたエラーメッセージに期待する内容が含まれていることを確認
-	assert.Contains(t, err.Error(), "indexing to Elasticsearch failed")
+	require.Contains(t, err.Error(), "indexing to Elasticsearch failed")
 }
 
 // TestLogSearcher_IndexLog_CloseError はレスポンスボディのClose時にエラーが発生しても処理が成功することを確認するテスト
@@ -193,11 +192,11 @@ func TestLogSearcher_IndexLog_CloseError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Close が呼ばれたことを確認
-	assert.True(t, mockBody.closed, "response body should be closed")
+	require.True(t, mockBody.closed, "response body should be closed")
 
 	// ログに正常メッセージが記録されていることを確認
-	assert.Len(t, mockLogger.Infos, 1)
-	assert.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
+	require.Len(t, mockLogger.Infos, 1)
+	require.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
 }
 
 // TestLogSearcher_IndexLog_CreatedStatus はElasticsearchが201ステータス（Created）を返した場合でも成功扱いになることを確認するテスト
@@ -224,8 +223,8 @@ func TestLogSearcher_IndexLog_CreatedStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	// ログに正常メッセージが記録されていることを確認
-	assert.Len(t, mockLogger.Infos, 1)
-	assert.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
+	require.Len(t, mockLogger.Infos, 1)
+	require.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
 }
 
 // TestLogSearcher_IndexLog_NilBody はレスポンスボディが空の場合でも処理が成功することを確認するテスト
@@ -252,6 +251,6 @@ func TestLogSearcher_IndexLog_NilBody(t *testing.T) {
 	require.NoError(t, err)
 
 	// ログに正常メッセージが記録されていることを確認
-	assert.Len(t, mockLogger.Infos, 1)
-	assert.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
+	require.Len(t, mockLogger.Infos, 1)
+	require.Contains(t, mockLogger.Infos[0].Msg, "Log indexed successfully")
 }
