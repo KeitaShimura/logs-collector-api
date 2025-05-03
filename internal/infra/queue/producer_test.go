@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/infra/queue"
@@ -15,7 +14,7 @@ import (
 // 共通エラー定義
 var errNATSPublish = errors.New("nats publish error")
 
-// --- モックNATS ---
+// --- Mock NATS ---
 
 // MockNATSConn は NATS の Publish メソッドをモック化する構造体。
 // テスト中に呼び出し状況や送信内容を検証するために使用する。
@@ -35,7 +34,7 @@ func (m *MockNATSConn) Publish(subject string, data []byte) error {
 	return m.err
 }
 
-// --- テスト ---
+// --- Publish Tests ---
 
 // TestProducer_Publish_Success は、ログメッセージが正常に NATS に送信される場合のテスト
 func TestProducer_Publish_Success(t *testing.T) {
@@ -76,13 +75,13 @@ func TestProducer_Publish_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// モックが正しく呼び出されたか検証
-	assert.True(t, mockConn.publishCalled)
-	assert.Equal(t, "logs.test", mockConn.subject)
-	assert.JSONEq(t, string(expectedJSON), string(mockConn.data))
+	require.True(t, mockConn.publishCalled)
+	require.Equal(t, "logs.test", mockConn.subject)
+	require.JSONEq(t, string(expectedJSON), string(mockConn.data))
 
 	// ログ出力の検証
-	assert.Len(t, mockLogger.Infos, 1)
-	assert.Contains(t, mockLogger.Infos[0].Msg, "Message published successfully")
+	require.Len(t, mockLogger.Infos, 1)
+	require.Contains(t, mockLogger.Infos[0].Msg, "Message published successfully")
 }
 
 // TestProducer_Publish_PublishError は、NATS への送信時にエラーが発生する場合のテスト
@@ -122,5 +121,5 @@ func TestProducer_Publish_PublishError(t *testing.T) {
 	require.Error(t, err)
 
 	// モックが呼び出されたことを確認
-	assert.True(t, mockConn.publishCalled)
+	require.True(t, mockConn.publishCalled)
 }
