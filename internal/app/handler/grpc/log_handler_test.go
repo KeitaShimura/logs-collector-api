@@ -71,13 +71,14 @@ func TestSendLog_Success(t *testing.T) {
 
 	// 成功ログが1件記録されていることを確認
 	require.Len(t, mockLogger.Infos, 1)
-	require.Contains(t, mockLogger.Infos[0].Msg, "log saved successfully")
+	require.Contains(t, mockLogger.Infos[0].Msg, "Log saved successfully")
 }
 
 // TestSendLog_Failure は gRPC の SendLog メソッドがログ保存に失敗した場合のテスト
 func TestSendLog_Failure(t *testing.T) {
 	t.Parallel()
 
+	// テスト環境をセットアップ
 	handler, mockUC, mockLogger, req := setupSendLogTest()
 
 	// モックユースケースに失敗を返すよう設定
@@ -95,7 +96,72 @@ func TestSendLog_Failure(t *testing.T) {
 
 	// エラーログが1件出力されていることを確認
 	require.Len(t, mockLogger.Errors, 1)
-	require.Contains(t, mockLogger.Errors[0].Msg, "failed to save log")
+	require.Contains(t, mockLogger.Errors[0].Msg, "Failed to save log")
+}
+
+// TestSendLog_CompleteID は gRPC の SendLog メソッドが ID 未指定の場合に自動補完されることを確認するテスト
+func TestSendLog_CompleteID(t *testing.T) {
+	t.Parallel()
+
+	// テスト環境をセットアップ
+	handler, mockUC, mockLogger, req := setupSendLogTest()
+
+	// IDを空にしておく（サーバー側で補完されることを期待）
+	req.Log.Id = ""
+
+	// モックユースケースが呼び出された際に、IDが自動生成されているか確認
+	mockUC.On("SendLog", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		logArg, ok := args.Get(1).(*model.Log)
+		require.True(t, ok, "expected argument to be of type *model.Log")
+		require.NotEmpty(t, logArg.ID, "ID should be auto-generated")
+	}).Return(nil)
+
+	// SendLog を実行
+	resp, err := handler.SendLog(t.Context(), req)
+
+	// エラーが発生しないことを確認
+	require.NoError(t, err)
+
+	// 成功フラグとエラーメッセージを確認
+	require.True(t, resp.GetSuccess())
+	require.Empty(t, resp.GetErrorMessage())
+
+	// 成功ログが1件記録されていることを確認
+	require.Len(t, mockLogger.Infos, 1)
+	require.Contains(t, mockLogger.Infos[0].Msg, "Log saved successfully")
+}
+
+// TestSendLog_CompleteMetadata は gRPC の SendLog メソッドが Metadata 未指定の場合に空マップが補完されることを確認するテスト
+func TestSendLog_CompleteMetadata(t *testing.T) {
+	t.Parallel()
+
+	// テスト環境をセットアップ
+	handler, mockUC, mockLogger, req := setupSendLogTest()
+
+	// Metadataをnilにしておく（サーバー側で空マップ補完されることを期待）
+	req.Log.Metadata = nil
+
+	// モックユースケースが呼び出された際に、Metadataが空マップになっているか確認
+	mockUC.On("SendLog", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+		logArg, ok := args.Get(1).(*model.Log)
+		require.True(t, ok, "expected argument to be of type *model.Log")
+		require.NotNil(t, logArg.Metadata, "Metadata should be initialized as empty map")
+		require.Empty(t, logArg.Metadata, "Metadata should be an empty map")
+	}).Return(nil)
+
+	// SendLog を実行
+	resp, err := handler.SendLog(t.Context(), req)
+
+	// エラーが発生しないことを確認
+	require.NoError(t, err)
+
+	// 成功フラグとエラーメッセージを確認
+	require.True(t, resp.GetSuccess())
+	require.Empty(t, resp.GetErrorMessage())
+
+	// 成功ログが1件記録されていることを確認
+	require.Len(t, mockLogger.Infos, 1)
+	require.Contains(t, mockLogger.Infos[0].Msg, "Log saved successfully")
 }
 
 // --- GetLogs Tests ---
@@ -145,7 +211,7 @@ func TestGetLogs_Success(t *testing.T) {
 
 	// Info ログが1件出力されていることを確認
 	require.Len(t, mockLogger.Infos, 1)
-	require.Contains(t, mockLogger.Infos[0].Msg, "logs retrieved successfully")
+	require.Contains(t, mockLogger.Infos[0].Msg, "Logs retrieved successfully")
 }
 
 // TestGetLogs_Failure は gRPC の GetLogs メソッドがログ取得に失敗した場合のテスト
@@ -179,5 +245,5 @@ func TestGetLogs_Failure(t *testing.T) {
 
 	// エラーログが1件出力されていることを確認
 	require.Len(t, mockLogger.Errors, 1)
-	require.Contains(t, mockLogger.Errors[0].Msg, "failed to get logs")
+	require.Contains(t, mockLogger.Errors[0].Msg, "Failed to get logs")
 }

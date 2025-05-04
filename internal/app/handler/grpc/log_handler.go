@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -31,21 +32,33 @@ func NewLogHandler(uc usecase.LogUseCase, logger logger.Logger) *LogHandler {
 
 // SendLog はログ保存リクエストを受け付け、処理するgRPCメソッド
 func (h *LogHandler) SendLog(ctx context.Context, req *pb.SendLogRequest) (*pb.SendLogResponse, error) {
+	// ID 補完（未指定場合はサーバー側で生成）
+	logID := req.GetLog().GetId()
+	if logID == "" {
+		logID = uuid.NewString()
+	}
+
+	// Metadata 補完（未指定場合は空mapで初期化）
+	metadata := req.GetLog().GetMetadata()
+	if metadata == nil {
+		metadata = make(map[string]string)
+	}
+
 	// gRPCリクエストをドメインモデルに変換
 	log := model.Log{
-		ID:        req.GetLog().GetId(),
+		ID:        logID,
 		TraceID:   req.GetLog().GetTraceId(),
 		Timestamp: req.GetLog().GetTimestamp().AsTime(),
 		Level:     req.GetLog().GetLevel(),
 		Service:   req.GetLog().GetService(),
 		Message:   req.GetLog().GetMessage(),
-		Metadata:  req.GetLog().GetMetadata(),
+		Metadata:  metadata,
 	}
 
 	// ユースケース層にログ保存を依頼
 	if err := h.logUseCase.SendLog(ctx, &log); err != nil {
 		// 保存失敗ログ
-		h.logger.Error("failed to save log", err,
+		h.logger.Error("Failed to save log", err,
 			"ID", log.ID,
 			"TraceID", log.TraceID,
 			"Timestamp", log.Timestamp,
@@ -63,7 +76,7 @@ func (h *LogHandler) SendLog(ctx context.Context, req *pb.SendLogRequest) (*pb.S
 	}
 
 	// 保存成功ログ
-	h.logger.Info("log saved successfully",
+	h.logger.Info("Log saved successfully",
 		"ID", log.ID,
 		"TraceID", log.TraceID,
 		"Timestamp", log.Timestamp,
@@ -92,7 +105,7 @@ func (h *LogHandler) GetLogs(ctx context.Context, req *pb.GetLogsRequest) (*pb.G
 	)
 	if err != nil {
 		// 取得失敗ログ
-		h.logger.Error("failed to get logs", err,
+		h.logger.Error("Failed to get logs", err,
 			"Service", req.GetService(),
 			"Level", req.GetLevel(),
 			"Limit", req.GetLimit(),
@@ -118,7 +131,7 @@ func (h *LogHandler) GetLogs(ctx context.Context, req *pb.GetLogsRequest) (*pb.G
 	}
 
 	// 成功ログ（総件数含む）
-	h.logger.Info("logs retrieved successfully",
+	h.logger.Info("Logs retrieved successfully",
 		"Count", len(pbLogs),
 		"Service", req.GetService(),
 		"Level", req.GetLevel(),
