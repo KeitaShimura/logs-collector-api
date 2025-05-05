@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/handler/rest"
+	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
 )
@@ -815,4 +816,45 @@ func TestParseQueryParams_OffsetNegative(t *testing.T) {
 	// Warnログが出力されていることを確認
 	require.Len(t, mockLogger.Warns, 1)
 	require.Contains(t, mockLogger.Warns[0].Msg, "Offset parameter is negative")
+}
+
+// --- TestAppErrorToHTTPStatus Tests ---
+
+// TestAppErrorToHTTPStatus は AppErrorToHTTPStatus 関数のマッピング動作を確認するテスト
+func TestAppErrorToHTTPStatus(t *testing.T) {
+	tests := []struct {
+		name     string // サブテスト名
+		err      error  // 入力エラー
+		expected int    // 期待するHTTPステータスコード
+	}{
+		{
+			name:     "ValidationFailure",
+			err:      usecase.ErrValidationFailure,
+			expected: http.StatusBadRequest,
+		},
+		{
+			name:     "RepositoryFailure",
+			err:      usecase.ErrRepositoryFailure,
+			expected: http.StatusInternalServerError,
+		},
+		{
+			name:     "NoLogsFound",
+			err:      usecase.ErrNoLogsFound,
+			expected: http.StatusNotFound,
+		},
+		{
+			name:     "UnknownError",
+			err:      errors.New("unexpected error"),
+			expected: http.StatusInternalServerError,
+		},
+	}
+
+	// 各ケースを順に検証
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status := rest.AppErrorToHTTPStatus(tt.err)
+			require.Equal(t, tt.expected, status,
+				"error %v should map to HTTP status %d", tt.err, tt.expected)
+		})
+	}
 }

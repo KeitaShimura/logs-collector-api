@@ -6,9 +6,11 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/handler/grpc"
+	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
@@ -246,4 +248,45 @@ func TestGetLogs_Failure(t *testing.T) {
 	// エラーログが1件出力されていることを確認
 	require.Len(t, mockLogger.Errors, 1)
 	require.Contains(t, mockLogger.Errors[0].Msg, "Failed to get logs")
+}
+
+// --- TestAppErrorToGRPCCode Tests ---
+
+// TestAppErrorToGRPCCode は AppErrorToGRPCCode 関数のマッピング動作を確認するテスト
+func TestAppErrorToGRPCCode(t *testing.T) {
+	tests := []struct {
+		name     string     // サブテスト名
+		err      error      // 入力エラー
+		expected codes.Code // 期待するgRPCステータスコード
+	}{
+		{
+			name:     "ValidationFailure",
+			err:      usecase.ErrValidationFailure,
+			expected: codes.InvalidArgument,
+		},
+		{
+			name:     "RepositoryFailure",
+			err:      usecase.ErrRepositoryFailure,
+			expected: codes.Internal,
+		},
+		{
+			name:     "NoLogsFound",
+			err:      usecase.ErrNoLogsFound,
+			expected: codes.NotFound,
+		},
+		{
+			name:     "UnknownError",
+			err:      errors.New("unexpected error"),
+			expected: codes.Unknown,
+		},
+	}
+
+	// 各ケースを順に検証
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code := grpc.AppErrorToGRPCCode(tt.err)
+			require.Equal(t, tt.expected, code,
+				"error %v should map to gRPC code %v", tt.err, tt.expected)
+		})
+	}
 }

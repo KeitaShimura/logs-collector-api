@@ -101,7 +101,7 @@ func (h *LogHandler) SendLog(echoCtx echo.Context) error {
 
 	// ユースケースを呼び出してログを保存
 	if err := h.logUseCase.SendLog(echoCtx.Request().Context(), logEntry); err != nil {
-		statusCode := GRPCErrorToHTTPStatus(err)
+		statusCode := AppErrorToHTTPStatus(err)
 		h.logger.Error("Failed to save log entry", err,
 			"ID", logEntry.ID,
 			"TraceID", logEntry.TraceID,
@@ -161,7 +161,7 @@ func (h *LogHandler) GetLogs(echoCtx echo.Context) error {
 	// ユースケースからログを取得
 	logs, err := h.logUseCase.GetLogs(echoCtx.Request().Context(), service, level, limit, offset)
 	if err != nil {
-		statusCode := GRPCErrorToHTTPStatus(err)
+		statusCode := AppErrorToHTTPStatus(err)
 
 		// エラーログを出力
 		h.logger.Error("Failed to fetch logs", err,
@@ -301,4 +301,19 @@ func ParseTimestamp(timestampStr string) (time.Time, error) {
 	}
 
 	return parsed, nil
+}
+
+// AppErrorToHTTPStatus はアプリケーションエラーを HTTP ステータスコードに変換する
+func AppErrorToHTTPStatus(err error) int {
+	switch {
+	case errors.Is(err, usecase.ErrValidationFailure):
+		return http.StatusBadRequest
+	case errors.Is(err, usecase.ErrRepositoryFailure):
+		return http.StatusInternalServerError
+	case errors.Is(err, usecase.ErrNoLogsFound):
+		return http.StatusNotFound
+	// 必要に応じて追加
+	default:
+		return http.StatusInternalServerError
+	}
 }

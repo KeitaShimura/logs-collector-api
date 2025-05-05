@@ -9,8 +9,6 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
@@ -130,10 +128,8 @@ func TestLogUseCase_SendLog_ValidationError(t *testing.T) {
 	err := logUseCase.SendLog(ctx, log)
 	require.Error(t, err)
 
-	// エラーステータスコードが InvalidArgument であることを確認
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.InvalidArgument, st.Code())
+	// エラーが validation failure であることを確認
+	require.ErrorIs(t, err, usecase.ErrValidationFailure)
 }
 
 // TestLogUseCase_SendLog_RepositoryError はリポジトリでエラーが発生した場合のテスト
@@ -159,14 +155,12 @@ func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 	// SendLog を実行し、エラーが発生することを確認
 	err := logUseCase.SendLog(ctx, log)
 
-	// エラーが Internal コードで返されることを確認
 	require.Error(t, err)
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.Internal, st.Code())
+
+	// エラーが repository failure であることを確認
+	require.ErrorIs(t, err, usecase.ErrRepositoryFailure)
 
 	// エラーログが1件記録されていることを確認
-	// "Failed to save log entry" のメッセージが含まれているか確認
 	require.Len(t, logger.Errors, 1)
 	require.Contains(t, logger.Errors[0].Msg, "Failed to save log entry")
 }
@@ -214,10 +208,8 @@ func TestLogUseCase_GetLogs_InvalidArgs(t *testing.T) {
 	_, err := uc.GetLogs(ctx, "user", "INFO", 0, -1)
 	require.Error(t, err)
 
-	// エラーのステータスコードが InvalidArgument であることを確認
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.InvalidArgument, st.Code())
+	// エラーが validation failure であることを確認
+	require.ErrorIs(t, err, usecase.ErrValidationFailure)
 }
 
 // TestLogUseCase_GetLogs_RepositoryError はリポジトリでエラーが発生した場合のテスト
@@ -233,10 +225,8 @@ func TestLogUseCase_GetLogs_RepositoryError(t *testing.T) {
 	_, err := logUseCase.GetLogs(ctx, "user2", "INFO", 10, 0)
 	require.Error(t, err)
 
-	// エラーが Internal コードで返されることを確認
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.Internal, st.Code())
+	// エラーが repository failure であることを確認
+	require.ErrorIs(t, err, usecase.ErrRepositoryFailure)
 
 	// エラーログが1件記録されていることを確認
 	require.Len(t, logger.Errors, 1)
@@ -252,14 +242,12 @@ func TestLogUseCase_GetLogs_NotFound(t *testing.T) {
 	// GetLogs が空のログリストを返すようにモック
 	mockRepo.On("GetLogs", ctx, "user3", "INFO", 10, 0).Return([]model.Log{}, nil)
 
-	// ログが見つからなかった場合、NotFound エラーが返されることを確認
+	// ログが見つからなかった場合、not found エラーが返されることを確認
 	_, err := logUseCase.GetLogs(ctx, "user3", "INFO", 10, 0)
 	require.Error(t, err)
 
-	// エラーのステータスコードが NotFound であることを確認
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	require.Equal(t, codes.NotFound, st.Code())
+	// エラーが not found failure であることを確認
+	require.ErrorIs(t, err, usecase.ErrNoLogsFound)
 }
 
 // --- validateLog Tests ---
