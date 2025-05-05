@@ -89,7 +89,7 @@ func setupParseQueryParamsTest(t *testing.T, query string) (
 	t.Helper()
 
 	// Echo サーバーを作成
-	server := echo.New()
+	echoServer := echo.New()
 
 	// モックロガーを作成（ユースケースは不要なので nil）
 	mockLogger := testutil.NewMockLogger()
@@ -101,7 +101,7 @@ func setupParseQueryParamsTest(t *testing.T, query string) (
 	// レスポンスレコーダを作成
 	rec := httptest.NewRecorder()
 
-	return handler, mockLogger, req, rec, server
+	return handler, mockLogger, req, rec, echoServer
 }
 
 // setupParseAndValidateTest は ParseAndValidateRequest のテスト用ヘルパー関数
