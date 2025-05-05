@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -69,10 +70,9 @@ func (h *LogHandler) SendLog(ctx context.Context, req *pb.SendLogRequest) (*pb.S
 		)
 
 		// 失敗レスポンスを返却（クライアントにもエラーを通知）
-		return &pb.SendLogResponse{
-			Success:      false,
-			ErrorMessage: StringPtr(err.Error()),
-		}, status.Errorf(codes.Internal, "failed to save log: %v", err)
+		grpcCode := AppErrorToGRPCCode(err)
+
+		return nil, status.Errorf(grpcCode, "failed to save log: %v", err)
 	}
 
 	// 保存成功ログ
@@ -113,7 +113,9 @@ func (h *LogHandler) GetLogs(ctx context.Context, req *pb.GetLogsRequest) (*pb.G
 		)
 
 		// gRPCエラーとして返却
-		return nil, status.Errorf(codes.Internal, "failed to get logs: %v", err)
+		grpcCode := AppErrorToGRPCCode(err)
+
+		return nil, status.Errorf(grpcCode, "failed to get logs: %v", err)
 	}
 
 	// ドメインモデルをgRPCレスポンス形式に変換
@@ -146,4 +148,19 @@ func (h *LogHandler) GetLogs(ctx context.Context, req *pb.GetLogsRequest) (*pb.G
 // stringPtr は文字列をポインタに変換するヘルパー関数
 func StringPtr(s string) *string {
 	return &s
+}
+
+// AppErrorToGRPCCode はアプリケーションエラーを gRPC ステータスコードに変換する
+func AppErrorToGRPCCode(err error) codes.Code {
+	switch {
+	case errors.Is(err, usecase.ErrValidationFailure):
+		return codes.InvalidArgument
+	case errors.Is(err, usecase.ErrRepositoryFailure):
+		return codes.Internal
+	case errors.Is(err, usecase.ErrNoLogsFound):
+		return codes.NotFound
+	// 必要に応じて追加
+	default:
+		return codes.Unknown
+	}
 }

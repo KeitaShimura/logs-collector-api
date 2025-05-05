@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/repository"
@@ -26,6 +24,9 @@ var (
 	ErrInvalidTimeZone      = errors.New("invalid time zone")
 	ErrInvalidLimit         = errors.New("limit must be greater than 0")
 	ErrInvalidOffset        = errors.New("offset must be >= 0")
+	ErrNoLogsFound          = errors.New("no logs found")
+	ErrRepositoryFailure    = errors.New("repository failure")
+	ErrValidationFailure    = errors.New("validation failure")
 )
 
 // LogUseCase はログに関連するユースケースのインターフェースを定義する
@@ -52,7 +53,7 @@ func NewLogUseCase(repo repository.LogRepository, log logger.Logger) *LogUseCase
 func (uc *LogUseCaseImpl) SendLog(ctx context.Context, logEntry *model.Log) error {
 	// 入力バリデーション（ID, TraceID, Message など）
 	if err := ValidateLog(logEntry, time.LoadLocation); err != nil {
-		return status.Errorf(codes.InvalidArgument, "invalid log entry: %v", err)
+		return fmt.Errorf("%w: %w", ErrValidationFailure, err)
 	}
 
 	// 永続化
@@ -67,7 +68,7 @@ func (uc *LogUseCaseImpl) SendLog(ctx context.Context, logEntry *model.Log) erro
 			"Metadata", logEntry.Metadata,
 		)
 
-		return status.Errorf(codes.Internal, "failed to save log: %v", err)
+		return fmt.Errorf("%w: %w", ErrRepositoryFailure, err)
 	}
 
 	// 保存成功ログ
@@ -94,7 +95,7 @@ func (uc *LogUseCaseImpl) GetLogs(
 ) ([]model.Log, error) {
 	// 入力パラメータ検証
 	if err := ValidateLogQueryParams(service, level, limit, offset); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+		return nil, fmt.Errorf("%w: %w", ErrValidationFailure, err)
 	}
 
 	// 永続層から取得
@@ -107,7 +108,7 @@ func (uc *LogUseCaseImpl) GetLogs(
 			"Offset", offset,
 		)
 
-		return nil, status.Errorf(codes.Internal, "failed to get logs: %v", err)
+		return nil, fmt.Errorf("%w: %w", ErrRepositoryFailure, err)
 	}
 
 	// 取得結果が0件
@@ -119,7 +120,7 @@ func (uc *LogUseCaseImpl) GetLogs(
 			"Offset", offset,
 		)
 
-		return nil, status.Errorf(codes.NotFound, "no logs found")
+		return nil, fmt.Errorf("%w", ErrNoLogsFound)
 	}
 
 	// 成功ログ
@@ -135,34 +136,34 @@ func (uc *LogUseCaseImpl) GetLogs(
 // ValidateLog はログエントリの入力検証を行う
 func ValidateLog(log *model.Log, timeLoadLocation func(string) (*time.Location, error)) error {
 	if log == nil {
-		return fmt.Errorf("%w", ErrLogEntryNil)
+		return ErrLogEntryNil
 	}
 
 	if log.Message == "" {
-		return fmt.Errorf("%w", ErrEmptyMessage)
+		return ErrEmptyMessage
 	}
 
 	if log.Level == "" {
-		return fmt.Errorf("%w", ErrEmptyLevel)
+		return ErrEmptyLevel
 	}
 
 	if log.Service == "" {
-		return fmt.Errorf("%w", ErrEmptyService)
+		return ErrEmptyService
 	}
 
 	if _, err := uuid.Parse(log.ID); err != nil {
-		return fmt.Errorf("%w", ErrInvalidIDFormat)
+		return ErrInvalidIDFormat
 	}
 
 	if _, err := uuid.Parse(log.TraceID); err != nil {
-		return fmt.Errorf("%w", ErrInvalidTraceIDFormat)
+		return ErrInvalidTraceIDFormat
 	}
 
 	// Timestamp がゼロ値の場合 JST で補完
 	if log.Timestamp.IsZero() {
 		jst, err := timeLoadLocation("Asia/Tokyo")
 		if err != nil {
-			return fmt.Errorf("%w", ErrInvalidTimeZone)
+			return ErrInvalidTimeZone
 		}
 
 		log.Timestamp = time.Now().In(jst) // 日本時間（Asia/Tokyo）で補完
@@ -171,22 +172,22 @@ func ValidateLog(log *model.Log, timeLoadLocation func(string) (*time.Location, 
 	return nil
 }
 
-// validateLogQueryParams はログ検索条件の検証を行う
+// ValidateLogQueryParams はログ検索条件の検証を行う
 func ValidateLogQueryParams(service string, level string, limit int, offset int) error {
 	if service == "" {
-		return fmt.Errorf("%w", ErrEmptyService)
+		return ErrEmptyService
 	}
 
 	if level == "" {
-		return fmt.Errorf("%w", ErrEmptyLevel)
+		return ErrEmptyLevel
 	}
 
 	if limit <= 0 {
-		return fmt.Errorf("%w", ErrInvalidLimit)
+		return ErrInvalidLimit
 	}
 
 	if offset < 0 {
-		return fmt.Errorf("%w", ErrInvalidOffset)
+		return ErrInvalidOffset
 	}
 
 	return nil

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/handler/rest"
+	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
 )
@@ -23,6 +24,7 @@ import (
 var (
 	errValidation = errors.New("validation error")
 	errDB         = errors.New("db error")
+	errUnexpected = errors.New("unexpected error")
 )
 
 // --- Imports and Dummy Setup ---
@@ -815,4 +817,49 @@ func TestParseQueryParams_OffsetNegative(t *testing.T) {
 	// Warnログが出力されていることを確認
 	require.Len(t, mockLogger.Warns, 1)
 	require.Contains(t, mockLogger.Warns[0].Msg, "Offset parameter is negative")
+}
+
+// --- TestAppErrorToHTTPStatus Tests ---
+
+// TestAppErrorToHTTPStatus は AppErrorToHTTPStatus 関数のマッピング動作を確認するテスト
+func TestAppErrorToHTTPStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string // サブテスト名
+		err      error  // 入力エラー
+		expected int    // 期待するHTTPステータスコード
+	}{
+		{
+			name:     "ValidationFailure",
+			err:      usecase.ErrValidationFailure,
+			expected: http.StatusBadRequest,
+		},
+		{
+			name:     "RepositoryFailure",
+			err:      usecase.ErrRepositoryFailure,
+			expected: http.StatusInternalServerError,
+		},
+		{
+			name:     "NoLogsFound",
+			err:      usecase.ErrNoLogsFound,
+			expected: http.StatusNotFound,
+		},
+		{
+			name:     "UnknownError",
+			err:      errUnexpected,
+			expected: http.StatusInternalServerError,
+		},
+	}
+
+	// 各ケースを順に検証
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			status := rest.AppErrorToHTTPStatus(testCase.err)
+			require.Equal(t, testCase.expected, status,
+				"error %v should map to HTTP status %d", testCase.err, testCase.expected)
+		})
+	}
 }
