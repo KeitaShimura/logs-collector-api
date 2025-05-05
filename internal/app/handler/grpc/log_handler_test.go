@@ -20,6 +20,7 @@ import (
 var (
 	errSaveFailed  = errors.New("save failed")
 	errGetLogsFail = errors.New("get logs failed")
+	errUnexpected  = errors.New("unexpected error")
 )
 
 // --- setup ---
@@ -254,6 +255,8 @@ func TestGetLogs_Failure(t *testing.T) {
 
 // TestAppErrorToGRPCCode は AppErrorToGRPCCode 関数のマッピング動作を確認するテスト
 func TestAppErrorToGRPCCode(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string     // サブテスト名
 		err      error      // 入力エラー
@@ -276,17 +279,19 @@ func TestAppErrorToGRPCCode(t *testing.T) {
 		},
 		{
 			name:     "UnknownError",
-			err:      errors.New("unexpected error"),
+			err:      errUnexpected,
 			expected: codes.Unknown,
 		},
 	}
 
 	// 各ケースを順に検証
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			code := grpc.AppErrorToGRPCCode(tt.err)
-			require.Equal(t, tt.expected, code,
-				"error %v should map to gRPC code %v", tt.err, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			code := grpc.AppErrorToGRPCCode(testCase.err)
+			require.Equal(t, testCase.expected, code,
+				"error %v should map to gRPC code %v", testCase.err, testCase.expected)
 		})
 	}
 }

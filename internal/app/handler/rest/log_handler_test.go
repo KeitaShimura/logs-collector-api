@@ -24,6 +24,7 @@ import (
 var (
 	errValidation = errors.New("validation error")
 	errDB         = errors.New("db error")
+	errUnexpected = errors.New("unexpected error")
 )
 
 // --- Imports and Dummy Setup ---
@@ -822,6 +823,8 @@ func TestParseQueryParams_OffsetNegative(t *testing.T) {
 
 // TestAppErrorToHTTPStatus は AppErrorToHTTPStatus 関数のマッピング動作を確認するテスト
 func TestAppErrorToHTTPStatus(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string // サブテスト名
 		err      error  // 入力エラー
@@ -844,17 +847,19 @@ func TestAppErrorToHTTPStatus(t *testing.T) {
 		},
 		{
 			name:     "UnknownError",
-			err:      errors.New("unexpected error"),
+			err:      errUnexpected,
 			expected: http.StatusInternalServerError,
 		},
 	}
 
 	// 各ケースを順に検証
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			status := rest.AppErrorToHTTPStatus(tt.err)
-			require.Equal(t, tt.expected, status,
-				"error %v should map to HTTP status %d", tt.err, tt.expected)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			status := rest.AppErrorToHTTPStatus(testCase.err)
+			require.Equal(t, testCase.expected, status,
+				"error %v should map to HTTP status %d", testCase.err, testCase.expected)
 		})
 	}
 }
