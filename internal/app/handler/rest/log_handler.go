@@ -187,8 +187,8 @@ func (h *LogHandler) GetLogs(echoCtx echo.Context) error {
 }
 
 // RespondJSON はJSONでレスポンスを返しつつ、内部エラーをラップして返す
-func RespondJSON(e echo.Context, code int, body interface{}) error {
-	if jsonErr := e.JSON(code, body); jsonErr != nil {
+func RespondJSON(echoCtx echo.Context, code int, body interface{}) error {
+	if jsonErr := echoCtx.JSON(code, body); jsonErr != nil {
 		return fmt.Errorf("failed to return JSON response: %w", jsonErr)
 	}
 
@@ -228,17 +228,17 @@ func (h *LogHandler) ParseAndValidateRequest(echoCtx echo.Context) (SendLogReque
 }
 
 // ParseQueryParams はクエリパラメータを抽出・バリデーションするヘルパー関数
-func (h *LogHandler) ParseQueryParams(ctx echo.Context) (string, string, int, int, error) {
+func (h *LogHandler) ParseQueryParams(echoCtx echo.Context) (string, string, int, int, error) {
 	// service パラメータを取得
-	service := ctx.QueryParam("service")
+	service := echoCtx.QueryParam("service")
 
 	// level パラメータを取得
-	level := ctx.QueryParam("level")
+	level := echoCtx.QueryParam("level")
 
 	// limit パラメータ（デフォルト: 100）
 	limit := 100
 
-	if limitStr := ctx.QueryParam("limit"); limitStr != "" {
+	if limitStr := echoCtx.QueryParam("limit"); limitStr != "" {
 		// limit を数値に変換
 		parsedLimit, err := strconv.Atoi(limitStr)
 		if err != nil {
@@ -262,7 +262,7 @@ func (h *LogHandler) ParseQueryParams(ctx echo.Context) (string, string, int, in
 	// offset パラメータ（デフォルト: 0）
 	offset := 0
 
-	if offsetStr := ctx.QueryParam("offset"); offsetStr != "" {
+	if offsetStr := echoCtx.QueryParam("offset"); offsetStr != "" {
 		// offset を数値に変換
 		parsedOffset, err := strconv.Atoi(offsetStr)
 		if err != nil {
