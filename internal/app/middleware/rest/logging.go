@@ -29,7 +29,8 @@ func LoggingMiddleware(log logger.Logger) echo.MiddlewareFunc {
 			// レスポンスステータスコードを文字列で取得（例: "200", "404"）
 			statusCode := strconv.Itoa(echoCtx.Response().Status)
 
-			// 構造化ログ出力（trace_id や user_id は context にセットされている前提）
+			// LoggingHandler を使って構造化ログを出力
+			// trace_id や user_id などは context から LoggingHandler 側で取得
 			middleware.LoggingHandler(
 				echoCtx.Request().Context(),
 				log,
@@ -39,7 +40,7 @@ func LoggingMiddleware(log logger.Logger) echo.MiddlewareFunc {
 				err,
 			)
 
-			// 次のハンドラーの結果をそのまま返却
+			// ハンドラの結果をそのまま返す
 			return err
 		}
 	}
