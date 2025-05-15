@@ -26,8 +26,8 @@ func TestRecoveryMiddleware_NormalFlow(t *testing.T) {
 	echoServer.Use(restmw.RecoveryMiddleware(mockLogger))
 
 	// 正常に "OK" を返すハンドラー
-	echoServer.GET("/test", func(c echo.Context) error {
-		return c.String(http.StatusOK, "OK")
+	echoServer.GET("/test", func(echoCtx echo.Context) error {
+		return echoCtx.String(http.StatusOK, "OK")
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)

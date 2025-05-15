@@ -471,9 +471,9 @@ func TestRespondJSON_Success(t *testing.T) {
 	t.Parallel()
 
 	// Echoサーバーとレスポンスレコーダーをセットアップ
-	e := echo.New()
+	echoServer := echo.New()
 	rec := httptest.NewRecorder()
-	c := e.NewContext(httptest.NewRequest(http.MethodGet, "/", nil), rec)
+	c := echoServer.NewContext(httptest.NewRequest(http.MethodGet, "/", nil), rec)
 
 	// テスト対象関数を実行
 	err := rest.RespondJSON(c, http.StatusOK, map[string]string{"message": "ok"})
