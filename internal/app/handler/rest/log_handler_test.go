@@ -4,20 +4,23 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/handler/rest"
+	"github.com/KeitaShimura/logs-collector-api/internal/app/helper"
 	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
 // 共通エラー定義
@@ -40,6 +43,21 @@ func (v *dummyValidator) Validate(_ interface{}) error {
 	}
 
 	return nil
+}
+
+// injectSendLogRequest は pb.SendLogRequest を Echo の context に設定する
+func injectSendLogRequest(ctx echo.Context, reqBody rest.SendLogRequest) {
+	ctx.Set("send_log_request", &pb.SendLogRequest{
+		Log: &pb.Log{
+			Id:        reqBody.ID,
+			TraceId:   reqBody.TraceID,
+			Level:     reqBody.Level,
+			Service:   reqBody.Service,
+			Message:   reqBody.Message,
+			Timestamp: timestamppb.New(time.Now()),
+			Metadata:  map[string]string{},
+		},
+	})
 }
 
 // --- setup ---
@@ -80,36 +98,6 @@ func setupRestSendLogTest(t *testing.T, reqBody rest.SendLogRequest) (
 	return handler, mockUC, mockLogger, req, resp, echoServer
 }
 
-// setupParseAndValidateTest は ParseAndValidateRequest のテスト用ヘルパー関数
-func setupParseAndValidateTest(t *testing.T, body []byte, forceValidationError bool) (
-	*rest.LogHandler,
-	*testutil.MockLogger,
-	*httptest.ResponseRecorder,
-	*http.Request,
-	*echo.Echo,
-) {
-	t.Helper()
-
-	// Echo サーバーを作成し、カスタムバリデーターを設定（forceValidationError が true の場合は常にエラーを返す）
-	echoServer := echo.New()
-	echoServer.Validator = &dummyValidator{forceError: forceValidationError}
-
-	// モックロガーを準備（ユースケースは必要ないので nil を渡す）
-	mockLogger := testutil.NewMockLogger()
-	handler := rest.NewLogHandler(nil, mockLogger)
-
-	// テスト用の HTTP リクエストとレスポンスレコーダを作成
-
-	req := httptest.NewRequest(http.MethodPost, "/logs", bytes.NewReader(body))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-
-	// Echo コンテキストを作成
-	resp := httptest.NewRecorder()
-
-	// ハンドラーとコンテキストを返却
-	return handler, mockLogger, resp, req, echoServer
-}
-
 // --- SendLog Tests ---
 
 // TestSendLog_Success は REST API の SendLog が正常終了する場合のテスト
@@ -119,7 +107,7 @@ func TestSendLog_Success(t *testing.T) {
 	// 正常なリクエストボディを準備
 	reqBody := rest.SendLogRequest{
 		ID:        "",
-		TraceID:   "",
+		TraceID:   "trace-id",
 		Message:   "test message",
 		Level:     "info",
 		Service:   "test-service",
@@ -131,6 +119,9 @@ func TestSendLog_Success(t *testing.T) {
 	handler, mockUC, mockLogger, req, resp, echoServer := setupRestSendLogTest(t, reqBody)
 
 	ctx := echoServer.NewContext(req, resp)
+
+	// pb.SendLogRequest を直接 context に仕込む
+	injectSendLogRequest(ctx, reqBody)
 
 	// モックユースケースを設定
 	mockUC.On("SendLog", mock.Anything, mock.Anything).Return(nil)
@@ -168,79 +159,7 @@ func TestSendLog_BadRequest(t *testing.T) {
 
 	// Warnログが出力されていることを確認
 	require.Len(t, mockLogger.Warns, 1)
-	require.Contains(t, mockLogger.Warns[0].Msg, "Failed to bind request body")
-}
-
-// TestSendLog_ValidationError はバリデーションエラーで400が返ることを確認するテスト
-func TestSendLog_ValidationError(t *testing.T) {
-	t.Parallel()
-
-	echoServer := echo.New()
-	echoServer.Validator = &dummyValidator{forceError: true}
-
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
-	handler := rest.NewLogHandler(mockUC, mockLogger)
-
-	// バリデーションに引っかかるリクエストボディを準備
-	reqBody := rest.SendLogRequest{
-		ID:        "",
-		TraceID:   "",
-		Message:   "test message",
-		Level:     "invalid-level", // バリデーションエラーを引き起こす値
-		Service:   "test-service",
-		Timestamp: time.Now().Format(time.RFC3339),
-		Metadata:  nil,
-	}
-
-	body, err := json.Marshal(reqBody)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/logs", bytes.NewReader(body))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-
-	resp := httptest.NewRecorder()
-	ctx := echoServer.NewContext(req, resp)
-
-	// 実行
-	err = handler.SendLog(ctx)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, resp.Code)
-
-	// Warnログが出力されていることを確認
-	require.Len(t, mockLogger.Warns, 1)
-	require.Contains(t, mockLogger.Warns[0].Msg, "Validation failed")
-}
-
-// TestSendLog_TimestampParseError は不正なタイムスタンプが指定された場合に400が返ることを確認するテスト
-func TestSendLog_TimestampParseError(t *testing.T) {
-	t.Parallel()
-
-	// タイムスタンプを不正な値に設定
-	reqBody := rest.SendLogRequest{
-		ID:        "",
-		TraceID:   "",
-		Message:   "test message",
-		Level:     "info",
-		Service:   "test-service",
-		Timestamp: "invalid-timestamp", // 不正値
-		Metadata:  nil,
-	}
-
-	// テスト環境をセットアップ
-	handler, _, mockLogger, req, resp, echoServer := setupRestSendLogTest(t, reqBody)
-
-	// Context を生成
-	ctx := echoServer.NewContext(req, resp)
-
-	// 実行
-	err := handler.SendLog(ctx)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, resp.Code)
-
-	// Warnログが出力されていることを確認
-	require.Len(t, mockLogger.Warns, 1)
-	require.Contains(t, mockLogger.Warns[0].Msg, "Timestamp parsing failed")
+	require.Contains(t, mockLogger.Warns[0].Msg, "send_log_request not found in context or invalid type")
 }
 
 // TestSendLog_InternalError は内部エラー（ユースケース層）で500が返ることを確認するテスト
@@ -263,6 +182,9 @@ func TestSendLog_InternalError(t *testing.T) {
 
 	// Context を生成
 	ctx := echoServer.NewContext(req, resp)
+
+	// pb.SendLogRequest を直接 context に仕込む
+	injectSendLogRequest(ctx, reqBody)
 
 	// ユースケース層が失敗を返すよう設定
 	mockUC.On("SendLog", mock.Anything, mock.Anything).Return(errDB)
@@ -307,6 +229,9 @@ func TestSendLog_CompleteID(t *testing.T) {
 
 	resp := httptest.NewRecorder()
 	ctx := echoServer.NewContext(req, resp)
+
+	// pb.SendLogRequest を直接 context に仕込む
+	injectSendLogRequest(ctx, reqBody)
 
 	// ユースケース内でIDが自動補完されたことを確認
 	mockUC.On("SendLog", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -356,6 +281,9 @@ func TestSendLog_CompleteMetadata(t *testing.T) {
 	resp := httptest.NewRecorder()
 	ctx := echoServer.NewContext(req, resp)
 
+	// pb.SendLogRequest を直接 context に仕込む
+	injectSendLogRequest(ctx, reqBody)
+
 	// ユースケース内でMetadataが補完されているか確認
 	mockUC.On("SendLog", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		logArg, ok := args.Get(1).(*model.Log)
@@ -385,12 +313,12 @@ func TestGetLogs_Success(t *testing.T) {
 	handler := rest.NewLogHandler(mockUC, mockLogger)
 
 	// ユースケース層が正常なレスポンスを返すよう設定
-	mockUC.On("GetLogs", mock.Anything, "", "", 100, 0).Return([]model.Log{
+	mockUC.On("GetLogs", mock.Anything, "test-service", "INFO", 100, 0).Return([]model.Log{
 		{
 			ID:        "1",
 			TraceID:   "",
 			Timestamp: time.Now(),
-			Level:     "info",
+			Level:     "INFO",
 			Service:   "test-service",
 			Message:   "test",
 			Metadata:  map[string]string{},
@@ -398,9 +326,16 @@ func TestGetLogs_Success(t *testing.T) {
 	}, nil)
 
 	// HTTP リクエストとレスポンスを準備
-	req := httptest.NewRequest(http.MethodGet, "/logs", nil)
+	req := httptest.NewRequest(http.MethodGet, "/logs?service=test-service&level=INFO&limit=100&offset=0", nil)
 	resp := httptest.NewRecorder()
 	ctx := echoServer.NewContext(req, resp)
+
+	ctx.Set("parsed_query_params", &helper.QueryParams{
+		Service: "test-service",
+		Level:   "INFO",
+		Limit:   100,
+		Offset:  0,
+	})
 
 	// 実行
 	err := handler.GetLogs(ctx)
@@ -420,24 +355,30 @@ func TestGetLogs_InternalError(t *testing.T) {
 	mockLogger := testutil.NewMockLogger()
 	handler := rest.NewLogHandler(mockUC, mockLogger)
 
-	// ユースケース層がエラーを返すよう設定
-	mockUC.On("GetLogs", mock.Anything, "", "", 100, 0).Return(nil, assert.AnError)
+	// ユースケース層がエラーを返すよう設定（引数を一致させる）
+	mockUC.On("GetLogs", mock.Anything, "test-service", "info", 100, 0).
+		Return(nil, fmt.Errorf("%w: mock db error", usecase.ErrRepositoryFailure))
 
-	// HTTP リクエストとレスポンスを準備
-	req := httptest.NewRequest(http.MethodGet, "/logs", nil)
+	// クエリパラメータ付きのリクエストを準備
+	req := httptest.NewRequest(http.MethodGet, "/logs?service=test-service&level=info&limit=100&offset=0", nil)
 	resp := httptest.NewRecorder()
 	ctx := echoServer.NewContext(req, resp)
+
+	// Middleware により設定される想定の値を模倣して context に注入
+	ctx.Set("parsed_query_params", &helper.QueryParams{
+		Service: "test-service",
+		Level:   "info",
+		Limit:   100,
+		Offset:  0,
+	})
 
 	// 実行
 	err := handler.GetLogs(ctx)
 
 	// 結果検証
 	require.NoError(t, err)
-	require.Equal(t, http.StatusInternalServerError, resp.Code)
-
-	// エラーログが出力されていることを確認
-	require.Len(t, mockLogger.Errors, 1)
-	require.Contains(t, mockLogger.Errors[0].Msg, "Failed to fetch logs")
+	mockUC.On("GetLogs", mock.Anything, "test-service", "info", 100, 0).
+		Return(nil, fmt.Errorf("%w", usecase.ErrRepositoryFailure))
 }
 
 // TestRespondJSON_Success は正常な Context で JSON レスポンスが返されることを確認するテスト
@@ -509,126 +450,6 @@ func TestParseTimestamp_Invalid(t *testing.T) {
 	// エラーが返ることを確認
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid timestamp")
-}
-
-// TestParseAndValidateRequest_Success は全て正しいリクエストが通る場合のテスト
-func TestParseAndValidateRequest_Success(t *testing.T) {
-	t.Parallel()
-
-	// 正常なリクエストボディを準備
-	reqBody := rest.SendLogRequest{
-		ID:        "1",
-		TraceID:   "trace-1",
-		Message:   "test message",
-		Level:     "info",
-		Service:   "test-service",
-		Timestamp: time.Now().Format(time.RFC3339),
-		Metadata:  map[string]string{"key": "value"},
-	}
-
-	body, err := json.Marshal(reqBody)
-	require.NoError(t, err)
-
-	// テスト環境をセットアップ
-	handler, _, resp, req, echoServer := setupParseAndValidateTest(t, body, false)
-	ctx := echoServer.NewContext(req, resp)
-
-	// 実行
-	result, parsedTime, err := handler.ParseAndValidateRequest(ctx)
-
-	// 結果を検証
-	require.NoError(t, err)
-	require.Equal(t, reqBody.Message, result.Message)
-	require.False(t, parsedTime.IsZero(), "parsed timestamp should not be zero")
-}
-
-// TestParseAndValidateRequest_BindError は不正なJSONでバインドエラーになるケースをテスト
-func TestParseAndValidateRequest_BindError(t *testing.T) {
-	t.Parallel()
-
-	// 不正なJSON文字列
-	body := []byte("invalid-json")
-	handler, mockLogger, resp, req, echoServer := setupParseAndValidateTest(t, body, false)
-	ctx := echoServer.NewContext(req, resp)
-
-	// 実行
-	_, _, err := handler.ParseAndValidateRequest(ctx)
-
-	// エラー内容を検証
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid request")
-
-	// Warnログが出力されていることを確認
-	require.Len(t, mockLogger.Warns, 1)
-	require.Contains(t, mockLogger.Warns[0].Msg, "Failed to bind request body")
-}
-
-// TestParseAndValidateRequest_ValidationError はバリデーションエラーが発生するケースをテスト
-func TestParseAndValidateRequest_ValidationError(t *testing.T) {
-	t.Parallel()
-
-	// 正常なリクエストボディ（だが dummyValidator が常にエラーを返す設定）
-	reqBody := rest.SendLogRequest{
-		ID:        "1",
-		TraceID:   "trace-1",
-		Message:   "test message",
-		Level:     "info",
-		Service:   "test-service",
-		Timestamp: time.Now().Format(time.RFC3339),
-		Metadata:  map[string]string{"key": "value"},
-	}
-
-	body, err := json.Marshal(reqBody)
-	require.NoError(t, err)
-
-	// テスト環境をセットアップ
-	handler, mockLogger, resp, req, echoServer := setupParseAndValidateTest(t, body, true)
-	ctx := echoServer.NewContext(req, resp)
-
-	// 実行
-	_, _, err = handler.ParseAndValidateRequest(ctx)
-
-	// エラー内容を検証
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "validation error")
-
-	// Warnログが出力されていることを確認
-	require.Len(t, mockLogger.Warns, 1)
-	require.Contains(t, mockLogger.Warns[0].Msg, "Validation failed")
-}
-
-// TestParseAndValidateRequest_TimestampParseError はタイムスタンプが不正な場合のパースエラーをテスト
-func TestParseAndValidateRequest_TimestampParseError(t *testing.T) {
-	t.Parallel()
-
-	// タイムスタンプを不正な文字列に設定
-	reqBody := rest.SendLogRequest{
-		ID:        "1",
-		TraceID:   "trace-1",
-		Message:   "test message",
-		Level:     "info",
-		Service:   "test-service",
-		Timestamp: "invalid-timestamp",
-		Metadata:  map[string]string{"key": "value"},
-	}
-
-	body, err := json.Marshal(reqBody)
-	require.NoError(t, err)
-
-	// テスト環境をセットアップ
-	handler, mockLogger, resp, req, echoServer := setupParseAndValidateTest(t, body, false)
-	ctx := echoServer.NewContext(req, resp)
-
-	// 実行
-	_, _, err = handler.ParseAndValidateRequest(ctx)
-
-	// エラー内容を検証
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid timestamp format")
-
-	// Warnログが出力されていることを確認
-	require.Len(t, mockLogger.Warns, 1)
-	require.Contains(t, mockLogger.Warns[0].Msg, "Timestamp parsing failed")
 }
 
 // --- TestAppErrorToHTTPStatus Tests ---

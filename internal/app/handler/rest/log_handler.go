@@ -13,6 +13,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/logger"
+	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
 // LogHandler はログ関連の REST リクエストを処理するハンドラー構造体
@@ -63,27 +64,27 @@ type ErrorResponse struct {
 // @Failure 500 {object} ErrorResponse
 // @Router /logs [post]
 func (h *LogHandler) SendLog(echoCtx echo.Context) error {
-	var req SendLogRequest
+	val := echoCtx.Get("send_log_request")
 
-	// リクエストボディをバインド（JSON → 構造体へ変換）
-	req, timestamp, err := h.ParseAndValidateRequest(echoCtx)
-	if err != nil {
-		var httpErr *echo.HTTPError
-		if errors.As(err, &httpErr) {
-			return RespondJSON(echoCtx, httpErr.Code, ErrorResponse{Error: httpErr.Error()})
-		}
+	req, ok := val.(*pb.SendLogRequest)
+	if !ok || req == nil {
+		h.logger.Warn("send_log_request not found in context or invalid type")
 
-		return RespondJSON(echoCtx, http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+		return RespondJSON(echoCtx, http.StatusBadRequest, ErrorResponse{Error: "invalid request context"})
 	}
 
-	// ID 補完（未指定の場合はサーバー側で生成）
-	logID := req.ID
+	log := req.GetLog()
+	if log == nil {
+		return RespondJSON(echoCtx, http.StatusBadRequest, ErrorResponse{Error: "log payload is required"})
+	}
+
+	logID := log.GetId()
 	if logID == "" {
 		logID = uuid.NewString()
 	}
 
 	// Metadata 補完（未指定の場合は空mapを設定）
-	metadata := req.Metadata
+	metadata := log.GetMetadata()
 	if metadata == nil {
 		metadata = make(map[string]string)
 	}
@@ -91,11 +92,11 @@ func (h *LogHandler) SendLog(echoCtx echo.Context) error {
 	// ログエントリを作成
 	logEntry := &model.Log{
 		ID:        logID,
-		TraceID:   req.TraceID,
-		Timestamp: timestamp,
-		Level:     req.Level,
-		Service:   req.Service,
-		Message:   req.Message,
+		TraceID:   log.GetTraceId(),
+		Timestamp: log.GetTimestamp().AsTime(),
+		Level:     log.GetLevel(),
+		Service:   log.GetService(),
+		Message:   log.GetMessage(),
 		Metadata:  metadata,
 	}
 
@@ -145,30 +146,33 @@ func (h *LogHandler) SendLog(echoCtx echo.Context) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /logs [get]
 func (h *LogHandler) GetLogs(echoCtx echo.Context) error {
-	service, level, limit, offset, err := helper.ParseQueryParams(echoCtx, h.logger)
-	if err != nil {
-		h.logger.Warn("Invalid query parameters", "error", err)
+	val := echoCtx.Get("parsed_query_params")
 
-		var httpErr *echo.HTTPError
+	params, ok := val.(*helper.QueryParams)
 
-		if errors.As(err, &httpErr) {
-			return RespondJSON(echoCtx, httpErr.Code, ErrorResponse{Error: err.Error()})
-		}
+	if !ok || params == nil {
+		h.logger.Warn("parsed_query_params not found or invalid")
 
-		return RespondJSON(echoCtx, http.StatusInternalServerError, ErrorResponse{Error: "internal server error"})
+		return RespondJSON(echoCtx, http.StatusBadRequest, ErrorResponse{Error: "invalid request context"})
 	}
 
 	// ユースケースからログを取得
-	logs, err := h.logUseCase.GetLogs(echoCtx.Request().Context(), service, level, limit, offset)
+	logs, err := h.logUseCase.GetLogs(
+		echoCtx.Request().Context(),
+		params.Service,
+		params.Level,
+		params.Limit,
+		params.Offset,
+	)
 	if err != nil {
 		statusCode := AppErrorToHTTPStatus(err)
 
 		// エラーログを出力
 		h.logger.Error("Failed to fetch logs", err,
-			"Service", service,
-			"Level", level,
-			"Limit", limit,
-			"Offset", offset,
+			"Service", params.Service,
+			"Level", params.Level,
+			"Limit", params.Limit,
+			"Offset", params.Offset,
 		)
 
 		return RespondJSON(echoCtx, statusCode, ErrorResponse{Error: err.Error()})
@@ -176,10 +180,10 @@ func (h *LogHandler) GetLogs(echoCtx echo.Context) error {
 
 	// 取得成功ログを出力
 	h.logger.Info("Logs fetched successfully",
-		"Service", service,
-		"Level", level,
-		"Limit", limit,
-		"Offset", offset,
+		"Service", params.Service,
+		"Level", params.Level,
+		"Limit", params.Limit,
+		"Offset", params.Offset,
 		"ResultCount", len(logs),
 	)
 
@@ -193,38 +197,6 @@ func RespondJSON(echoCtx echo.Context, code int, body interface{}) error {
 	}
 
 	return nil
-}
-
-// ParseAndValidateRequest はリクエストボディをパース・バリデーションし、パース済み構造体とタイムスタンプを返す関数
-func (h *LogHandler) ParseAndValidateRequest(echoCtx echo.Context) (SendLogRequest, time.Time, error) {
-	var req SendLogRequest
-
-	// --- リクエストボディをバインド（JSON → 構造体へ変換） ---
-	if err := echoCtx.Bind(&req); err != nil {
-		// バインド失敗時は警告ログを出力し、400エラーを返却
-		h.logger.Warn("Failed to bind request body", "error", err)
-
-		return req, time.Time{}, echo.NewHTTPError(http.StatusBadRequest, "invalid request")
-	}
-
-	// --- バリデーションチェック ---
-	if err := echoCtx.Validate(&req); err != nil {
-		// バリデーション失敗時は警告ログを出力し、400エラーを返却
-		h.logger.Warn("Validation failed", "error", err)
-
-		return req, time.Time{}, echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	// --- タイムスタンプをパース（RFC3339形式を期待） ---
-	timestamp, err := ParseTimestamp(req.Timestamp)
-	if err != nil {
-		// タイムスタンプのパース失敗時は警告ログを出力し、400エラーを返却
-		h.logger.Warn("Timestamp parsing failed", "timestamp", req.Timestamp, "error", err)
-
-		return req, time.Time{}, echo.NewHTTPError(http.StatusBadRequest, "invalid timestamp format (use RFC3339)")
-	}
-
-	return req, timestamp, nil
 }
 
 // ParseTimestamp は文字列で渡されたタイムスタンプを time.Time 型にパースするヘルパー関数
