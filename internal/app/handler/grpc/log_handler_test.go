@@ -194,8 +194,8 @@ func TestGetLogs_Success(t *testing.T) {
 	mockUC.On("GetLogs", mock.Anything, "test-service", "info", 10, 0).Return(mockLogs, nil)
 
 	req := &pb.GetLogsRequest{
-		Service:   grpc.StringPtr("test-service"),
-		Level:     grpc.StringPtr("info"),
+		Service:   testutil.StringPtr("test-service"),
+		Level:     testutil.StringPtr("info"),
 		Limit:     10,
 		Offset:    0,
 		StartTime: nil,
@@ -229,8 +229,8 @@ func TestGetLogs_Failure(t *testing.T) {
 	mockUC.On("GetLogs", mock.Anything, "test-service", "info", 10, 0).Return(nil, errGetLogsFail)
 
 	req := &pb.GetLogsRequest{
-		Service:   grpc.StringPtr("test-service"),
-		Level:     grpc.StringPtr("info"),
+		Service:   testutil.StringPtr("test-service"),
+		Level:     testutil.StringPtr("info"),
 		Limit:     10,
 		Offset:    0,
 		StartTime: nil,

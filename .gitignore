@@ -31,3 +31,4 @@ sqlboiler.toml
 *.envrc
 *.env
 secret/
+debug/

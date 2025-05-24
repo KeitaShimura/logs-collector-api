@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/repository"
@@ -51,11 +48,6 @@ func NewLogUseCase(repo repository.LogRepository, log logger.Logger) *LogUseCase
 
 // SendLog はログを永続化するユースケースを実行する
 func (uc *LogUseCaseImpl) SendLog(ctx context.Context, logEntry *model.Log) error {
-	// 入力バリデーション（ID, TraceID, Message など）
-	if err := ValidateLog(logEntry, time.LoadLocation); err != nil {
-		return fmt.Errorf("%w: %w", ErrValidationFailure, err)
-	}
-
 	// 永続化
 	if err := uc.logRepo.SendLog(ctx, logEntry); err != nil {
 		uc.logger.Error("Failed to save log entry", err,
@@ -93,11 +85,6 @@ func (uc *LogUseCaseImpl) GetLogs(
 	limit int,
 	offset int,
 ) ([]model.Log, error) {
-	// 入力パラメータ検証
-	if err := ValidateLogQueryParams(service, level, limit, offset); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrValidationFailure, err)
-	}
-
 	// 永続層から取得
 	logs, err := uc.logRepo.GetLogs(ctx, service, level, limit, offset)
 	if err != nil {
@@ -131,64 +118,4 @@ func (uc *LogUseCaseImpl) GetLogs(
 	)
 
 	return logs, nil
-}
-
-// ValidateLog はログエントリの入力検証を行う
-func ValidateLog(log *model.Log, timeLoadLocation func(string) (*time.Location, error)) error {
-	if log == nil {
-		return ErrLogEntryNil
-	}
-
-	if log.Message == "" {
-		return ErrEmptyMessage
-	}
-
-	if log.Level == "" {
-		return ErrEmptyLevel
-	}
-
-	if log.Service == "" {
-		return ErrEmptyService
-	}
-
-	if _, err := uuid.Parse(log.ID); err != nil {
-		return ErrInvalidIDFormat
-	}
-
-	if _, err := uuid.Parse(log.TraceID); err != nil {
-		return ErrInvalidTraceIDFormat
-	}
-
-	// Timestamp がゼロ値の場合 JST で補完
-	if log.Timestamp.IsZero() {
-		jst, err := timeLoadLocation("Asia/Tokyo")
-		if err != nil {
-			return ErrInvalidTimeZone
-		}
-
-		log.Timestamp = time.Now().In(jst) // 日本時間（Asia/Tokyo）で補完
-	}
-
-	return nil
-}
-
-// ValidateLogQueryParams はログ検索条件の検証を行う
-func ValidateLogQueryParams(service string, level string, limit int, offset int) error {
-	if service == "" {
-		return ErrEmptyService
-	}
-
-	if level == "" {
-		return ErrEmptyLevel
-	}
-
-	if limit <= 0 {
-		return ErrInvalidLimit
-	}
-
-	if offset < 0 {
-		return ErrInvalidOffset
-	}
-
-	return nil
 }

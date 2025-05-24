@@ -7,13 +7,19 @@ import (
 	// Swagger docs を読み込むための blank import（swag により生成される）
 	_ "github.com/KeitaShimura/logs-collector-api/docs"
 	"github.com/KeitaShimura/logs-collector-api/internal/app/handler/rest"
+	restmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/rest"
+	"github.com/KeitaShimura/logs-collector-api/internal/logger"
 	customValidator "github.com/KeitaShimura/logs-collector-api/internal/pkg/validator"
 )
 
 // NewRouter は Echo サーバーのルーターを初期化し、エンドポイントを登録する
-func NewRouter(logHandler *rest.LogHandler) *echo.Echo {
+func NewRouter(logHandler *rest.LogHandler, logger logger.Logger) *echo.Echo {
 	// Echo インスタンスを作成
 	echoServer := echo.New()
+
+	// 共通ミドルウェア
+	echoServer.Use(restmw.LoggingMiddleware(logger))
+	echoServer.Use(restmw.RecoveryMiddleware(logger))
 
 	// カスタムバリデーターを設定（Echo のバリデーション用）
 	echoServer.Validator = customValidator.NewValidator()
@@ -21,10 +27,12 @@ func NewRouter(logHandler *rest.LogHandler) *echo.Echo {
 	// Swagger UI エンドポイントを登録
 	echoServer.GET("/swagger/*", echoSwagger.WrapHandler)
 
+	// API グループ
 	api := echoServer.Group("/api")
 
-	api.POST("/logs", logHandler.SendLog)
-	api.GET("/logs", logHandler.GetLogs)
+	// 各エンドポイント
+	api.POST("/logs", logHandler.SendLog, restmw.ValidationMiddlewareSendLog(logger))
+	api.GET("/logs", logHandler.GetLogs, restmw.ValidationMiddlewareGetLogs(logger))
 
 	return echoServer
 }

@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/KeitaShimura/logs-collector-api/internal/app/helper"
 	"github.com/KeitaShimura/logs-collector-api/internal/app/middleware"
 	"github.com/KeitaShimura/logs-collector-api/internal/logger"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
@@ -29,12 +30,13 @@ func ValidationInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 				return nil, status.Error(codes.InvalidArgument, err.Error())
 			}
 		case *pb.GetLogsRequest:
-			if err := middleware.ValidateGetLogsRequest(
-				typedReq.GetService(),
-				typedReq.GetLevel(),
-				typedReq.GetLimit(),
-				typedReq.GetOffset(),
-			); err != nil {
+			err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
+				Service: typedReq.GetService(),
+				Level:   typedReq.GetLevel(),
+				Limit:   int(typedReq.GetLimit()),
+				Offset:  int(typedReq.GetOffset()),
+			})
+			if err != nil {
 				log.Warn("GetLogs validation failed", "error", err)
 
 				return nil, status.Error(codes.InvalidArgument, err.Error())

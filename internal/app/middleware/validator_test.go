@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/KeitaShimura/logs-collector-api/internal/app/helper"
 	"github.com/KeitaShimura/logs-collector-api/internal/app/middleware"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
@@ -190,10 +191,20 @@ func TestValidateSendLogRequest_FutureTimestamp(t *testing.T) {
 func TestValidateGetLogsRequest_Valid(t *testing.T) {
 	t.Parallel()
 
-	err := middleware.ValidateGetLogsRequest("auth-service", "DEBUG", 10, 0)
+	err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
+		Service: "auth-service",
+		Level:   "DEBUG",
+		Limit:   10,
+		Offset:  0,
+	})
 	require.NoError(t, err)
 
-	err = middleware.ValidateGetLogsRequest("svc", "", 50, 0) // level空でもOK
+	err = middleware.ValidateGetLogsRequest(&helper.QueryParams{
+		Service: "svc",
+		Level:   "",
+		Limit:   50,
+		Offset:  0,
+	})
 	require.NoError(t, err)
 }
 
@@ -201,15 +212,26 @@ func TestValidateGetLogsRequest_Valid(t *testing.T) {
 func TestValidateGetLogsRequest_EmptyService(t *testing.T) {
 	t.Parallel()
 
-	err := middleware.ValidateGetLogsRequest("", "INFO", 10, 0)
+	err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
+		Service: "",
+		Level:   "INFO",
+		Limit:   10,
+		Offset:  0,
+	})
 	require.EqualError(t, err, "service must not be empty")
 }
 
 // TestValidateGetLogsRequest_InvalidLevel は、無効なログレベルが指定された場合にエラーが返されることを検証する
+
 func TestValidateGetLogsRequest_InvalidLevel(t *testing.T) {
 	t.Parallel()
 
-	err := middleware.ValidateGetLogsRequest("svc", "TRACE", 10, 0)
+	err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
+		Service: "svc",
+		Level:   "TRACE",
+		Limit:   10,
+		Offset:  0,
+	})
 	require.EqualError(t, err, "invalid log.level: TRACE")
 }
 
@@ -217,7 +239,12 @@ func TestValidateGetLogsRequest_InvalidLevel(t *testing.T) {
 func TestValidateGetLogsRequest_LimitTooLow(t *testing.T) {
 	t.Parallel()
 
-	err := middleware.ValidateGetLogsRequest("svc", "INFO", 0, 0)
+	err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
+		Service: "svc",
+		Level:   "INFO",
+		Limit:   0,
+		Offset:  0,
+	})
 	require.EqualError(t, err, "limit must be between 1 and 1000")
 }
 
@@ -225,7 +252,12 @@ func TestValidateGetLogsRequest_LimitTooLow(t *testing.T) {
 func TestValidateGetLogsRequest_LimitTooHigh(t *testing.T) {
 	t.Parallel()
 
-	err := middleware.ValidateGetLogsRequest("svc", "INFO", 1001, 0)
+	err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
+		Service: "svc",
+		Level:   "INFO",
+		Limit:   1001,
+		Offset:  0,
+	})
 	require.EqualError(t, err, "limit must be between 1 and 1000")
 }
 
@@ -233,7 +265,12 @@ func TestValidateGetLogsRequest_LimitTooHigh(t *testing.T) {
 func TestValidateGetLogsRequest_NegativeOffset(t *testing.T) {
 	t.Parallel()
 
-	err := middleware.ValidateGetLogsRequest("svc", "INFO", 10, -1)
+	err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
+		Service: "svc",
+		Level:   "INFO",
+		Limit:   10,
+		Offset:  -1,
+	})
 	require.EqualError(t, err, "offset must be >= 0")
 }
 

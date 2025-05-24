@@ -19,6 +19,8 @@ import (
 // 共通エラー定義
 var errMockRead = errors.New("mock read error")
 
+// --- setup ---
+
 // errorReader は Read 時に常にエラーを返すテスト用の io.Reader 実装。
 type errorReader struct{}
 
@@ -26,6 +28,8 @@ type errorReader struct{}
 func (e *errorReader) Read(_ []byte) (int, error) {
 	return 0, errMockRead
 }
+
+// --- ValidationMiddlewareSendLog Tests ---
 
 // TestValidationMiddlewareSendLog_ValidRequest は、正しいリクエストを送信した場合に OK を返し、エラーログや警告ログが出力されないことを検証する
 func TestValidationMiddlewareSendLog_ValidRequest(t *testing.T) {
@@ -179,6 +183,8 @@ func TestValidationMiddlewareSendLog_InvalidRequest(t *testing.T) {
 	require.Contains(t, mockLogger.Warns[0].Msg, "SendLog validation failed")
 }
 
+// --- ValidationMiddlewareGetLogs Tests ---
+
 // TestValidationMiddlewareGetLogs_Valid は、GET /logs のクエリが有効な場合に OK を返し、ログが出力されないことを検証する
 func TestValidationMiddlewareGetLogs_Valid(t *testing.T) {
 	t.Parallel()
@@ -212,12 +218,13 @@ func TestValidationMiddlewareGetLogs_Valid(t *testing.T) {
 func TestValidationMiddlewareGetLogs_InvalidLimit(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
+	echoServer := echo.New()
 
 	// limit が負 → バリデーションエラー
 	req := httptest.NewRequest(http.MethodGet, "/logs?service=svc&level=INFO&limit=-1&offset=0", nil)
+
 	resp := httptest.NewRecorder()
-	ctx := e.NewContext(req, resp)
+	ctx := echoServer.NewContext(req, resp)
 
 	mockLogger := testutil.NewMockLogger()
 	mw := restmw.ValidationMiddlewareGetLogs(mockLogger)
@@ -226,23 +233,17 @@ func TestValidationMiddlewareGetLogs_InvalidLimit(t *testing.T) {
 		return c.String(http.StatusOK, "SHOULD NOT HAPPEN")
 	})
 
-	// 実行 → error を返すはず
+	// 実行
 	err := handler(ctx)
 
-	// echo.HTTPError がラップされているので errors.As で取り出す
-	var httpErr *echo.HTTPError
-	if errors.As(err, &httpErr) {
-		require.Equal(t, http.StatusBadRequest, httpErr.Code)
+	// エラーが返らず、レスポンスに 400 が書き込まれているはず
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, resp.Code)
 
-		// メッセージに "limit" を含むことを確認
-		msg, ok := httpErr.Message.(string)
-		require.True(t, ok, "httpErr.Message is not a string")
-		require.Contains(t, msg, "limit")
-	} else {
-		require.Fail(t, "unexpected error", err)
-	}
+	// レスポンスボディに "limit" を含む JSON が返っていること
+	require.Contains(t, resp.Body.String(), "limit")
 
 	// 警告ログが出力されていることを確認
 	require.Len(t, mockLogger.Warns, 1)
-	require.Contains(t, mockLogger.Warns[0].Msg, "Limit parameter out of range")
+	require.Contains(t, mockLogger.Warns[0].Msg, "Validation failed")
 }

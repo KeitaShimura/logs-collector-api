@@ -145,11 +145,6 @@ func (h *LogHandler) GetLogs(ctx context.Context, req *pb.GetLogsRequest) (*pb.G
 	return &pb.GetLogsResponse{Logs: pbLogs}, nil
 }
 
-// stringPtr は文字列をポインタに変換するヘルパー関数
-func StringPtr(s string) *string {
-	return &s
-}
-
 // AppErrorToGRPCCode はアプリケーションエラーを gRPC ステータスコードに変換する
 func AppErrorToGRPCCode(err error) codes.Code {
 	switch {

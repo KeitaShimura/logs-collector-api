@@ -101,8 +101,8 @@ func TestValidationInterceptor_GetLogsRequest_Valid(t *testing.T) {
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	req := &pb.GetLogsRequest{
-		Service:   String("svc"),
-		Level:     String("INFO"),
+		Service:   testutil.StringPtr("svc"),
+		Level:     testutil.StringPtr("INFO"),
 		Limit:     50,
 		Offset:    0,
 		StartTime: nil,
@@ -127,8 +127,8 @@ func TestValidationInterceptor_GetLogsRequest_Invalid(t *testing.T) {
 
 	// Limit が負 → バリデーションエラー
 	req := &pb.GetLogsRequest{
-		Service:   String("svc"),
-		Level:     String("INFO"),
+		Service:   testutil.StringPtr("svc"),
+		Level:     testutil.StringPtr("INFO"),
 		Limit:     -1,
 		Offset:    0,
 		StartTime: nil,
@@ -147,9 +147,4 @@ func TestValidationInterceptor_GetLogsRequest_Invalid(t *testing.T) {
 	// ログ出力の検証
 	require.Len(t, logger.Warns, 1)
 	require.Contains(t, logger.Warns[0].Msg, "GetLogs validation failed")
-}
-
-// String は文字列リテラルを string ポインタに変換するヘルパー関数
-func String(s string) *string {
-	return &s
 }
