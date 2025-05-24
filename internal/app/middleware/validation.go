@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/KeitaShimura/logs-collector-api/internal/app/helper"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
@@ -64,22 +65,20 @@ func ValidateSendLogRequest(req *pb.SendLogRequest) error {
 }
 
 // ValidateGetLogsRequest はログ取得リクエストのバリデーションを行う
-func ValidateGetLogsRequest(service, level string, limit, offset int32) error {
-	if service == "" {
+func ValidateGetLogsRequest(params *helper.QueryParams) error {
+	if params.Service == "" {
 		return ErrServiceParamEmpty
 	}
 
-	if level != "" {
-		if !IsValidLogLevel(level) {
-			return fmt.Errorf("%w: %s", ErrInvalidLogLevel, level)
-		}
+	if params.Level != "" && !IsValidLogLevel(params.Level) {
+		return fmt.Errorf("%w: %s", ErrInvalidLogLevel, params.Level)
 	}
 
-	if limit < 1 || limit > 1000 {
+	if params.Limit < 1 || params.Limit > 1000 {
 		return ErrLimitOutOfRange
 	}
 
-	if offset < 0 {
+	if params.Offset < 0 {
 		return ErrOffsetNegative
 	}
 
