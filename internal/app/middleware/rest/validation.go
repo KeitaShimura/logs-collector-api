@@ -3,7 +3,6 @@ package restmw
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -60,27 +59,27 @@ func ValidationMiddlewareSendLog(logger logger.Logger) echo.MiddlewareFunc {
 func ValidationMiddlewareGetLogs(log logger.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(echoCtx echo.Context) error {
-			service, level, limit, offset, err := helper.ParseQueryParams(echoCtx, log)
+			params, err := helper.ParseQueryParams(echoCtx, log)
 			if err != nil {
-				// ParseQueryParams 側で echo.NewHTTPError が返るのでそのまま返してOK
-				return fmt.Errorf("failed to parse query params: %w", err)
-			}
+				log.Warn("ParseQueryParams failed", "error", err)
 
-			// int32キャスト前に安全確認（ParseQueryParams で範囲チェック済みなのでOK）
-			//
-			//nolint:gosec
-			limit32 := int32(limit)
-			//nolint:gosec
-			offset32 := int32(offset)
+				return echoCtx.JSON(http.StatusBadRequest, map[string]string{
+					"error": err.Error(),
+				})
+			}
 
 			// バリデーション
-			if err := middleware.ValidateGetLogsRequest(service, level, limit32, offset32); err != nil {
-				log.Warn("GetLogs validation failed", "error", err)
+			if err := middleware.ValidateGetLogsRequest(params); err != nil {
+				log.Warn("Validation failed", "error", err)
 
-				return echoCtx.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return echoCtx.JSON(http.StatusBadRequest, map[string]string{
+					"error": err.Error(),
+				})
 			}
 
-			// 次のハンドラへ
+			// context に格納して後続で使えるようにする
+			echoCtx.Set("parsed_query_params", params)
+
 			return next(echoCtx)
 		}
 	}
