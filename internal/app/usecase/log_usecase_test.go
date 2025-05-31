@@ -20,7 +20,13 @@ var (
 // --- setup ---
 
 // setup はモックリポジトリ、モックロガー、ユースケースを初期化して返す
-func setup() (*appmock.LogRepository, *appmock.Logger, *appmock.Producer, *usecase.LogUseCaseImpl) {
+func setup() (
+	*appmock.LogRepository,
+	*appmock.Logger,
+	*appmock.Producer,
+	*appmock.LogSearcher,
+	*usecase.LogUseCaseImpl,
+) {
 	mockRepo := new(appmock.LogRepository)
 	mockLogger := appmock.NewLogger()
 	mockProducer := appmock.NewProducer()
@@ -28,7 +34,7 @@ func setup() (*appmock.LogRepository, *appmock.Logger, *appmock.Producer, *useca
 
 	uc := usecase.NewLogUseCase(mockRepo, mockProducer, mockSearcher, mockLogger)
 
-	return mockRepo, mockLogger, mockProducer, uc
+	return mockRepo, mockLogger, mockProducer, mockSearcher, uc
 }
 
 // --- SendLog Tests ---
@@ -37,7 +43,7 @@ func setup() (*appmock.LogRepository, *appmock.Logger, *appmock.Producer, *useca
 func TestLogUseCase_SendLog_Success(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, producer, logUseCase := setup()
+	mockRepo, logger, producer, searcher, logUseCase := setup()
 
 	// テスト用の正常なログデータを準備
 	log := &model.Log{
@@ -58,11 +64,18 @@ func TestLogUseCase_SendLog_Success(t *testing.T) {
 	require.NoError(t, err)
 	mockRepo.AssertExpectations(t)
 
-	// ログ送信確認
+	// NATS送信確認
 	require.Len(t, producer.PublishedMessages, 1)
-	require.Equal(t, "a4dcd4a8-2fb7-4c6b-bb02-54a5beedee45", producer.PublishedMessages[0].ID)
+	require.Equal(t, log.ID, producer.PublishedMessages[0].ID)
 
-	// ログ保存後に1件のInfoログが記録されていることを確認
+	// Elasticsearch送信確認
+	require.Len(t, searcher.Calls, 1)
+	require.Equal(t, "logs-index", searcher.Calls[0].Index)
+	require.Equal(t, log.ID, searcher.Calls[0].LogData["id"])
+	require.Equal(t, log.Service, searcher.Calls[0].LogData["service"])
+	require.Equal(t, log.Message, searcher.Calls[0].LogData["message"])
+
+	// Infoログ確認
 	require.Len(t, logger.Infos, 1)
 	require.Contains(t, logger.Infos[0].Msg, "Log entry saved successfully")
 }
@@ -71,7 +84,7 @@ func TestLogUseCase_SendLog_Success(t *testing.T) {
 func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, producer, logUseCase := setup()
+	mockRepo, logger, producer, searcher, logUseCase := setup()
 
 	// エラーをシミュレートするためのログデータを準備
 	log := &model.Log{
@@ -95,12 +108,15 @@ func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 	// エラーが repository failure であることを確認
 	require.ErrorIs(t, err, usecase.ErrRepositoryFailure)
 
+	// NATSには送信されない
+	require.Empty(t, producer.PublishedMessages)
+
+	// Elasticsearchには送信されないことを確認
+	require.Empty(t, searcher.Calls)
+
 	// エラーログが1件記録されていることを確認
 	require.Len(t, logger.Errors, 1)
 	require.Contains(t, logger.Errors[0].Msg, "Failed to save log entry")
-
-	// NATSには送信されない
-	require.Empty(t, producer.PublishedMessages)
 }
 
 // --- GetLogs Tests ---
@@ -109,7 +125,7 @@ func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 func TestLogUseCase_GetLogs_Success(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, _, logUseCase := setup()
+	mockRepo, logger, _, _, logUseCase := setup()
 
 	// 期待するログデータ
 	expected := []model.Log{{
@@ -140,7 +156,7 @@ func TestLogUseCase_GetLogs_Success(t *testing.T) {
 func TestLogUseCase_GetLogs_RepositoryError(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, _, logUseCase := setup()
+	mockRepo, logger, _, _, logUseCase := setup()
 
 	// リポジトリでエラーを返すようにモック
 	mockRepo.On("GetLogs", ctx, "user2", "INFO", 10, 0).Return([]model.Log(nil), errMockDB)
@@ -161,7 +177,7 @@ func TestLogUseCase_GetLogs_RepositoryError(t *testing.T) {
 func TestLogUseCase_GetLogs_NotFound(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, _, _, logUseCase := setup()
+	mockRepo, _, _, _, logUseCase := setup() //nolint:dogsled // テスト対象は mockRepo のみのため未使用戻り値は破棄
 
 	// GetLogs が空のログリストを返すようにモック
 	mockRepo.On("GetLogs", ctx, "user3", "INFO", 10, 0).Return([]model.Log{}, nil)
