@@ -7,44 +7,14 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/infra/search"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通エラー定義
 var errMockIndexError = errors.New("index error")
-
-// --- Mocks ---
-
-// mockESClient は Elasticsearch クライアントのモック
-type mockESClient struct {
-	indexFunc func(index string, body *bytes.Reader, o ...func(*esapi.IndexRequest)) (*esapi.Response, error)
-}
-
-// Index はモックの Index メソッド
-func (m *mockESClient) Index(
-	index string,
-	body *bytes.Reader,
-	o ...func(*esapi.IndexRequest),
-) (*esapi.Response, error) {
-	return m.indexFunc(index, body, o...)
-}
-
-// errorCloser は Close 時にフラグを立てるモック
-type errorCloser struct {
-	io.Reader
-	closed bool
-}
-
-// Close は closed フラグを true にするモック実装
-func (e *errorCloser) Close() error {
-	e.closed = true
-
-	return nil
-}
 
 // --- IndexLog Tests ---
 
@@ -53,11 +23,11 @@ func TestLogSearcher_IndexLog_Success(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーとモックElasticsearchクライアントを準備
-	mockLogger := testutil.NewMockLogger()
-	mockClient := &mockESClient{
-		indexFunc: func(_ string, _ *bytes.Reader, _ ...func(*esapi.IndexRequest)) (*esapi.Response, error) {
-			// 正常系のレスポンスを返す
-			return &esapi.Response{
+	mockLogger := appmock.NewLogger()
+	mockClient := &appmock.ESClient{
+		PerformFunc: func(_ *http.Request) (*http.Response, error) {
+			//nolint:exhaustruct // 未使用フィールドはデフォルト値で問題ないため省略
+			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{},
 				Body:       io.NopCloser(bytes.NewBufferString("ok")),
@@ -86,9 +56,9 @@ func TestLogSearcher_IndexLog_MarshalError(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーを準備（indexFuncは使わない）
-	mockLogger := testutil.NewMockLogger()
-	mockClient := &mockESClient{
-		indexFunc: nil,
+	mockLogger := appmock.NewLogger()
+	mockClient := &appmock.ESClient{
+		PerformFunc: nil,
 	}
 
 	// 検索者を作成
@@ -111,9 +81,9 @@ func TestLogSearcher_IndexLog_IndexError(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーとエラーを返すモッククライアントを準備
-	mockLogger := testutil.NewMockLogger()
-	mockClient := &mockESClient{
-		indexFunc: func(_ string, _ *bytes.Reader, _ ...func(*esapi.IndexRequest)) (*esapi.Response, error) {
+	mockLogger := appmock.NewLogger()
+	mockClient := &appmock.ESClient{
+		PerformFunc: func(_ *http.Request) (*http.Response, error) {
 			return nil, errMockIndexError
 		},
 	}
@@ -138,10 +108,11 @@ func TestLogSearcher_IndexLog_ResponseError(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーとレスポンスエラーを返すモッククライアントを準備
-	mockLogger := testutil.NewMockLogger()
-	mockClient := &mockESClient{
-		indexFunc: func(_ string, _ *bytes.Reader, _ ...func(*esapi.IndexRequest)) (*esapi.Response, error) {
-			return &esapi.Response{
+	mockLogger := appmock.NewLogger()
+	mockClient := &appmock.ESClient{
+		PerformFunc: func(_ *http.Request) (*http.Response, error) {
+			//nolint:exhaustruct // 未使用フィールドはデフォルト値で問題ないため省略
+			return &http.Response{
 				StatusCode: http.StatusInternalServerError,
 				Header:     http.Header{},
 				Body:       io.NopCloser(bytes.NewBufferString("error")),
@@ -168,14 +139,15 @@ func TestLogSearcher_IndexLog_ResponseError(t *testing.T) {
 func TestLogSearcher_IndexLog_CloseError(t *testing.T) {
 	t.Parallel()
 
-	mockLogger := testutil.NewMockLogger()
-	mockBody := &errorCloser{
+	mockLogger := appmock.NewLogger()
+	mockBody := &appmock.ErrorCloser{
 		Reader: bytes.NewBufferString("ok"),
-		closed: false, // 明示的に初期化
+		Closed: false, // 明示的に初期化
 	}
-	mockClient := &mockESClient{
-		indexFunc: func(_ string, _ *bytes.Reader, _ ...func(*esapi.IndexRequest)) (*esapi.Response, error) {
-			return &esapi.Response{
+	mockClient := &appmock.ESClient{
+		PerformFunc: func(_ *http.Request) (*http.Response, error) {
+			//nolint:exhaustruct // 未使用フィールドはデフォルト値で問題ないため省略
+			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{},
 				Body:       mockBody,
@@ -192,7 +164,7 @@ func TestLogSearcher_IndexLog_CloseError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Close が呼ばれたことを確認
-	require.True(t, mockBody.closed, "response body should be closed")
+	require.True(t, mockBody.Closed, "response body should be closed")
 
 	// ログに正常メッセージが記録されていることを確認
 	require.Len(t, mockLogger.Infos, 1)
@@ -203,10 +175,11 @@ func TestLogSearcher_IndexLog_CloseError(t *testing.T) {
 func TestLogSearcher_IndexLog_CreatedStatus(t *testing.T) {
 	t.Parallel()
 
-	mockLogger := testutil.NewMockLogger()
-	mockClient := &mockESClient{
-		indexFunc: func(_ string, _ *bytes.Reader, _ ...func(*esapi.IndexRequest)) (*esapi.Response, error) {
-			return &esapi.Response{
+	mockLogger := appmock.NewLogger()
+	mockClient := &appmock.ESClient{
+		PerformFunc: func(_ *http.Request) (*http.Response, error) {
+			//nolint:exhaustruct // 未使用フィールドはデフォルト値で問題ないため省略
+			return &http.Response{
 				StatusCode: http.StatusCreated, // 201
 				Header:     http.Header{},
 				Body:       io.NopCloser(bytes.NewBufferString("created")),
@@ -231,10 +204,11 @@ func TestLogSearcher_IndexLog_CreatedStatus(t *testing.T) {
 func TestLogSearcher_IndexLog_NilBody(t *testing.T) {
 	t.Parallel()
 
-	mockLogger := testutil.NewMockLogger()
-	mockClient := &mockESClient{
-		indexFunc: func(_ string, _ *bytes.Reader, _ ...func(*esapi.IndexRequest)) (*esapi.Response, error) {
-			return &esapi.Response{
+	mockLogger := appmock.NewLogger()
+	mockClient := &appmock.ESClient{
+		PerformFunc: func(_ *http.Request) (*http.Response, error) {
+			//nolint:exhaustruct // 未使用フィールドはデフォルト値で問題ないため省略
+			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     http.Header{},
 				Body:       io.NopCloser(bytes.NewBufferString("")), // 空のBodyを模擬

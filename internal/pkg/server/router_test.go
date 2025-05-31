@@ -15,7 +15,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/app/handler/rest"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/pkg/server"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
@@ -24,8 +24,8 @@ func TestSwaggerRoute(t *testing.T) {
 	t.Parallel()
 
 	// モックのユースケースとロガーを準備
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
 
 	// Swaggerドキュメント用のGETリクエストを作成
@@ -44,10 +44,10 @@ func TestPostLogsRoute_Success(t *testing.T) {
 	t.Parallel()
 
 	// モックユースケースのSendLogを成功レスポンスに設定
-	mockUC := new(testutil.MockLogUseCase)
+	mockUC := new(appmock.LogUseCase)
 	mockUC.On("SendLog", mock.Anything, mock.AnythingOfType("*model.Log")).Return(nil)
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
 
 	// テスト用のPOSTリクエストボディを作成
@@ -93,8 +93,8 @@ func TestPostLogsRoute_NotFound(t *testing.T) {
 	t.Parallel()
 
 	// モックのユースケースとロガーを準備
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
 
 	// 存在しないPOSTルートへのリクエストを作成
@@ -113,7 +113,7 @@ func TestGetLogsRoute_Success(t *testing.T) {
 	t.Parallel()
 
 	// モックユースケースのGetLogsを成功レスポンスに設定
-	mockUC := new(testutil.MockLogUseCase)
+	mockUC := new(appmock.LogUseCase)
 	mockUC.On("GetLogs",
 		mock.Anything,
 		"test-service",
@@ -122,7 +122,7 @@ func TestGetLogsRoute_Success(t *testing.T) {
 		0,
 	).Return([]model.Log{}, nil)
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
 
 	// GETリクエストを作成
@@ -149,8 +149,8 @@ func TestGetLogsRoute_NotFound(t *testing.T) {
 	t.Parallel()
 
 	// モックのユースケースとロガーを準備
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
 
 	// 存在しないGETルートへのリクエストを作成

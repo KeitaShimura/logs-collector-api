@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	grpcmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/grpc"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通エラー定義
@@ -22,7 +22,7 @@ func TestRecoveryInterceptor_NormalFlow(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーを作成し、RecoveryInterceptor を取得
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	interceptor := grpcmw.RecoveryInterceptor(mockLogger)
 
 	// 正常に値を返すハンドラーを用意
@@ -49,7 +49,7 @@ func TestRecoveryInterceptor_Panic(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーを作成し、RecoveryInterceptor を取得
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	interceptor := grpcmw.RecoveryInterceptor(mockLogger)
 
 	// panic を発生させるハンドラーを用意
@@ -82,7 +82,7 @@ func TestRecoveryInterceptor_HandlerReturnsError(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーを作成し、RecoveryInterceptor を取得
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	interceptor := grpcmw.RecoveryInterceptor(mockLogger)
 
 	// エラーを返すハンドラーを用意

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	restmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/rest"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通エラー定義
@@ -20,7 +20,7 @@ func TestRecoveryMiddleware_NormalFlow(t *testing.T) {
 	t.Parallel()
 
 	echoServer := echo.New()
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	// Echo サーバに RecoveryMiddleware を登録
 	echoServer.Use(restmw.RecoveryMiddleware(mockLogger))
@@ -46,7 +46,7 @@ func TestRecoveryMiddleware_Panic(t *testing.T) {
 	t.Parallel()
 
 	echoServer := echo.New()
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	// RecoveryMiddleware を登録
 	echoServer.Use(restmw.RecoveryMiddleware(mockLogger))

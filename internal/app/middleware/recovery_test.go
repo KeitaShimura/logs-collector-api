@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/middleware"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // TestRecoveryHandler は RecoveryHandler 関数の挙動をテストする
@@ -14,7 +14,7 @@ func TestRecoveryHandler(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーを初期化
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	// テスト用の追加コンテキスト情報を準備
 	contextInfo := map[string]interface{}{

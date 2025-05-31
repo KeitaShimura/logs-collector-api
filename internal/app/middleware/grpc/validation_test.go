@@ -6,37 +6,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	grpcmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/grpc"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
-
-// TestValidationInterceptor_UnknownType は、バリデーション対象外の型が渡された場合にハンドラがそのまま実行されることを検証する
-func TestValidationInterceptor_UnknownType(t *testing.T) {
-	t.Parallel()
-
-	logger := testutil.NewMockLogger()
-	interceptor := grpcmw.ValidationInterceptor(logger)
-
-	// 対象外の型 → handlerがそのまま呼ばれる
-	resp, err := interceptor(t.Context(), "some string", nil, func(_ context.Context, _ interface{}) (interface{}, error) {
-		return "passed", nil
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, "passed", resp)
-	require.Empty(t, logger.Warns) // 警告ログが出ていないことも確認
-}
 
 // TestValidationInterceptor_SendLogRequest_Valid は、SendLogRequest が正しい場合にハンドラが正常に実行されることを検証する
 func TestValidationInterceptor_SendLogRequest_Valid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	req := &pb.SendLogRequest{
@@ -51,19 +36,27 @@ func TestValidationInterceptor_SendLogRequest_Valid(t *testing.T) {
 		},
 	}
 
-	resp, err := interceptor(t.Context(), req, nil, func(_ context.Context, _ interface{}) (interface{}, error) {
+	resp, err := interceptor(t.Context(), req, &grpc.UnaryServerInfo{
+		FullMethod: "/logs.v1.LogService/SendLog",
+		Server:     nil,
+	}, func(_ context.Context, _ interface{}) (interface{}, error) {
 		return "OK", nil
 	})
 
 	require.NoError(t, err)
 	require.Equal(t, "OK", resp)
+
+	// ログ出力の検証
+	require.Empty(t, logger.Warns)
+	require.Len(t, logger.Infos, 1)
+	require.Contains(t, logger.Infos[0].Msg, "validation: received SendLogRequest")
 }
 
 // TestValidationInterceptor_SendLogRequest_Invalid は、SendLogRequest の TraceId が空の場合にバリデーションエラーとログ出力が発生することを検証する
 func TestValidationInterceptor_SendLogRequest_Invalid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	// TraceIdが空 → バリデーションエラーになるはず
@@ -79,7 +72,11 @@ func TestValidationInterceptor_SendLogRequest_Invalid(t *testing.T) {
 		},
 	}
 
-	resp, err := interceptor(t.Context(), req, nil, nil)
+	resp, err := interceptor(t.Context(), req, &grpc.UnaryServerInfo{
+		FullMethod: "/logs.v1.LogService/SendLog",
+		Server:     nil,
+	}, nil)
+
 	require.Nil(t, resp)
 	require.Error(t, err)
 
@@ -90,14 +87,14 @@ func TestValidationInterceptor_SendLogRequest_Invalid(t *testing.T) {
 
 	// ログ出力の検証
 	require.Len(t, logger.Warns, 1)
-	require.Contains(t, logger.Warns[0].Msg, "SendLog validation failed")
+	require.Contains(t, logger.Warns[0].Msg, "validation: SendLogRequest validation failed")
 }
 
 // TestValidationInterceptor_GetLogsRequest_Valid は、GetLogsRequest が正しい内容である場合にハンドラが正常に実行されることを検証する
 func TestValidationInterceptor_GetLogsRequest_Valid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	req := &pb.GetLogsRequest{
@@ -109,20 +106,27 @@ func TestValidationInterceptor_GetLogsRequest_Valid(t *testing.T) {
 		EndTime:   nil,
 	}
 
-	resp, err := interceptor(t.Context(), req, nil, func(_ context.Context, _ interface{}) (interface{}, error) {
+	resp, err := interceptor(t.Context(), req, &grpc.UnaryServerInfo{
+		FullMethod: "/logs.v1.LogService/GetLogs",
+		Server:     nil,
+	}, func(_ context.Context, _ interface{}) (interface{}, error) {
 		return "OK", nil
 	})
 
 	require.NoError(t, err)
 	require.Equal(t, "OK", resp)
-	require.Empty(t, logger.Warns) // 警告ログが出ていないことも確認
+
+	// ログ出力の検証
+	require.Empty(t, logger.Warns)
+	require.Len(t, logger.Infos, 1)
+	require.Contains(t, logger.Infos[0].Msg, "validation: received GetLogsRequest")
 }
 
 // TestValidationInterceptor_GetLogsRequest_Invalid は、GetLogsRequest の Limit が不正な場合にバリデーションエラーとログ出力が発生することを検証する
 func TestValidationInterceptor_GetLogsRequest_Invalid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	// Limit が負 → バリデーションエラー
@@ -135,7 +139,11 @@ func TestValidationInterceptor_GetLogsRequest_Invalid(t *testing.T) {
 		EndTime:   nil,
 	}
 
-	resp, err := interceptor(t.Context(), req, nil, nil)
+	resp, err := interceptor(t.Context(), req, &grpc.UnaryServerInfo{
+		FullMethod: "/logs.v1.LogService/GetLogs",
+		Server:     nil,
+	}, nil)
+
 	require.Nil(t, resp)
 	require.Error(t, err)
 
@@ -146,5 +154,28 @@ func TestValidationInterceptor_GetLogsRequest_Invalid(t *testing.T) {
 
 	// ログ出力の検証
 	require.Len(t, logger.Warns, 1)
-	require.Contains(t, logger.Warns[0].Msg, "GetLogs validation failed")
+	require.Contains(t, logger.Warns[0].Msg, "validation: GetLogsRequest validation failed")
+}
+
+// TestValidationInterceptor_UnknownType は、バリデーション対象外の型が渡された場合にハンドラがそのまま実行され、警告ログが出力されることを検証する
+func TestValidationInterceptor_UnknownType(t *testing.T) {
+	t.Parallel()
+
+	logger := appmock.NewLogger()
+	interceptor := grpcmw.ValidationInterceptor(logger)
+
+	// 対象外の型 → handlerがそのまま呼ばれる
+	resp, err := interceptor(t.Context(), "some string", &grpc.UnaryServerInfo{
+		FullMethod: "/logs.v1.LogService/Unknown",
+		Server:     nil,
+	}, func(_ context.Context, _ interface{}) (interface{}, error) {
+		return "passed", nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "passed", resp)
+
+	// ログ出力の検証
+	require.Len(t, logger.Warns, 1)
+	require.Contains(t, logger.Warns[0].Msg, "validation: unknown request type")
 }

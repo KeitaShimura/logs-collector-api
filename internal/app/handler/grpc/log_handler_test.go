@@ -13,6 +13,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
@@ -26,10 +27,10 @@ var (
 // --- setup ---
 
 // setupSendLogTest は gRPC ハンドラーと必要なモック、およびテスト用リクエストを準備するヘルパー関数
-func setupSendLogTest() (*grpc.LogHandler, *testutil.MockLogUseCase, *testutil.MockLogger, *pb.SendLogRequest) {
+func setupSendLogTest() (*grpc.LogHandler, *appmock.LogUseCase, *appmock.Logger, *pb.SendLogRequest) {
 	// モックユースケースとモックロガーを作成
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 
 	// テスト対象の gRPC ハンドラーを初期化
 	handler := grpc.NewLogHandler(mockUC, mockLogger)
@@ -173,8 +174,8 @@ func TestSendLog_CompleteMetadata(t *testing.T) {
 func TestGetLogs_Success(t *testing.T) {
 	t.Parallel()
 
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	handler := grpc.NewLogHandler(mockUC, mockLogger)
 
 	// モックログデータを準備
@@ -221,8 +222,8 @@ func TestGetLogs_Success(t *testing.T) {
 func TestGetLogs_Failure(t *testing.T) {
 	t.Parallel()
 
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	handler := grpc.NewLogHandler(mockUC, mockLogger)
 
 	// モックユースケースに失敗を返すよう設定

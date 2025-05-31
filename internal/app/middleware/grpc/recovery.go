@@ -46,9 +46,9 @@ func RecoveryInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 		}()
 		<-done // goroutine の終了を待つ
 
-		// Internal 以外のエラーを Internal にラップ
-		if err != nil && status.Code(err) != codes.Internal {
-			return nil, status.Errorf(codes.Internal, "internal error: %v", err)
+		// Unknown ステータスのエラーを Internal にラップ（gRPC ステータスを明示）
+		if err != nil && status.Code(err) == codes.Unknown {
+			err = status.Errorf(codes.Internal, "internal error: %v", err)
 		}
 
 		return resp, err

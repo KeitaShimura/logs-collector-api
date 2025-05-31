@@ -1,4 +1,4 @@
-package testutil
+package mock
 
 import (
 	"context"
@@ -17,13 +17,13 @@ var (
 	ErrUnexpectedMockType = errors.New("unexpected mock type")
 )
 
-// MockLogUseCase は LogUseCase インターフェースのモック実装
-type MockLogUseCase struct {
+// LogUseCase は LogUseCase インターフェースのモック実装
+type LogUseCase struct {
 	mock.Mock
 }
 
 // SendLog はモックの SendLog メソッドを呼び出す
-func (m *MockLogUseCase) SendLog(ctx context.Context, log *model.Log) error {
+func (m *LogUseCase) SendLog(ctx context.Context, log *model.Log) error {
 	args := m.Called(ctx, log)
 	if err := args.Error(0); err != nil {
 		return fmt.Errorf("%w: %w", ErrMockSendLog, err)
@@ -33,7 +33,7 @@ func (m *MockLogUseCase) SendLog(ctx context.Context, log *model.Log) error {
 }
 
 // GetLogs はモックの GetLogs メソッドを呼び出す
-func (m *MockLogUseCase) GetLogs(ctx context.Context, service, level string, limit, offset int) ([]model.Log, error) {
+func (m *LogUseCase) GetLogs(ctx context.Context, service, level string, limit, offset int) ([]model.Log, error) {
 	args := m.Called(ctx, service, level, limit, offset)
 
 	v := args.Get(0)

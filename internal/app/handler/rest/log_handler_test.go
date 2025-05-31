@@ -19,7 +19,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/app/helper"
 	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
@@ -65,8 +65,8 @@ func injectSendLogRequest(ctx echo.Context, reqBody rest.SendLogRequest) {
 // setupRestSendLogTest は REST ハンドラーと必要なモック、Echo サーバ、HTTPリクエストを準備するヘルパー関数
 func setupRestSendLogTest(t *testing.T, reqBody rest.SendLogRequest) (
 	*rest.LogHandler,
-	*testutil.MockLogUseCase,
-	*testutil.MockLogger,
+	*appmock.LogUseCase,
+	*appmock.Logger,
 	*http.Request,
 	*httptest.ResponseRecorder,
 	*echo.Echo,
@@ -78,8 +78,8 @@ func setupRestSendLogTest(t *testing.T, reqBody rest.SendLogRequest) (
 	echoServer.Validator = &dummyValidator{forceError: false}
 
 	// モックユースケースとモックロガーを作成
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 
 	// テスト対象のハンドラーを初期化
 	handler := rest.NewLogHandler(mockUC, mockLogger)
@@ -141,8 +141,8 @@ func TestSendLog_BadRequest(t *testing.T) {
 	t.Parallel()
 
 	echoServer := echo.New()
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	handler := rest.NewLogHandler(mockUC, mockLogger)
 
 	// 不正なJSON文字列を送信
@@ -206,8 +206,8 @@ func TestSendLog_CompleteID(t *testing.T) {
 	echoServer := echo.New()
 	echoServer.Validator = &dummyValidator{forceError: false}
 
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	handler := rest.NewLogHandler(mockUC, mockLogger)
 
 	// ID を空にしておく（サーバー側で自動補完されることを期待）
@@ -257,8 +257,8 @@ func TestSendLog_CompleteMetadata(t *testing.T) {
 	echoServer := echo.New()
 	echoServer.Validator = &dummyValidator{forceError: false}
 
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	handler := rest.NewLogHandler(mockUC, mockLogger)
 
 	// Metadata を nil 指定（サーバー側で空マップが補完されることを期待）
@@ -308,8 +308,8 @@ func TestGetLogs_Success(t *testing.T) {
 
 	// Echo サーバーと必要なモックをセットアップ
 	echoServer := echo.New()
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	handler := rest.NewLogHandler(mockUC, mockLogger)
 
 	// ユースケース層が正常なレスポンスを返すよう設定
@@ -351,8 +351,8 @@ func TestGetLogs_InternalError(t *testing.T) {
 
 	// Echo サーバーと必要なモックをセットアップ
 	echoServer := echo.New()
-	mockUC := new(testutil.MockLogUseCase)
-	mockLogger := testutil.NewMockLogger()
+	mockUC := new(appmock.LogUseCase)
+	mockLogger := appmock.NewLogger()
 	handler := rest.NewLogHandler(mockUC, mockLogger)
 
 	// ユースケース層がエラーを返すよう設定（引数を一致させる）
@@ -399,19 +399,14 @@ func TestRespondJSON_Success(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"message":"ok"`)
 }
 
-// TestRespondJSON_PanicOnNilContext は nil の Context を渡した場合にpanicすることを確認するテスト
-func TestRespondJSON_PanicOnNilContext(t *testing.T) {
+// nil の echo.Context を渡した場合に適切なエラーを返すことを確認する
+func TestRespondJSON_NilContext(t *testing.T) {
 	t.Parallel()
 
-	// panicが発生するか確認
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("expected panic but code did not panic")
-		}
-	}()
+	err := rest.RespondJSON(nil, http.StatusOK, map[string]string{"message": "ok"})
 
-	// nil Contextを渡す（ここでpanicが発生するはず）
-	_ = rest.RespondJSON(nil, http.StatusOK, map[string]string{"message": "ok"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "echo context is nil")
 }
 
 // TestParseTimestamp_Empty は空文字列が渡された場合に現在時刻が返ることを確認するテスト

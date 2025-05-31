@@ -14,6 +14,11 @@ type NATSConn interface {
 	Publish(subject string, data []byte) error
 }
 
+// ProducerInterface はNATS送信用のインターフェース
+type LogProducer interface {
+	Publish(subject string, msg LogMessage) error
+}
+
 // Producer はログを NATS に送信する構造体
 type Producer struct {
 	Conn   NATSConn

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/middleware"
@@ -29,7 +30,13 @@ func LoggingInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 		duration := time.Since(start)
 
 		// gRPC ステータスコードを取得（例：OK, Internal, NotFound など）
-		code := status.Code(err)
+		// ステータスコードの解析を強化（ラップされたエラー対応）
+		var code codes.Code
+		if s, ok := status.FromError(err); ok {
+			code = s.Code()
+		} else {
+			code = codes.Internal
+		}
 
 		// LoggingHandler を使って構造化ログを出力
 		// trace_id や user_id などは context から LoggingHandler 側で取得

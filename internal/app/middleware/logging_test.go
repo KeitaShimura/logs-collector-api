@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/middleware"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通のエラーインスタンスを定義（err113回避のため）
@@ -19,7 +19,7 @@ var errSomethingFailed = errors.New("something failed")
 func TestLoggingHandler_Info(t *testing.T) {
 	t.Parallel()
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	// コンテキストに全てのメタデータをセット
 	ctx := t.Context()
@@ -70,7 +70,7 @@ func TestLoggingHandler_Info(t *testing.T) {
 func TestLoggingHandler_Error(t *testing.T) {
 	t.Parallel()
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	// すべてのメタデータを context にセット
 	ctx := t.Context()
@@ -121,7 +121,7 @@ func TestLoggingHandler_Error(t *testing.T) {
 func TestLoggingHandler_EmptyFieldsAreIncluded(t *testing.T) {
 	t.Parallel()
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	ctx := t.Context() // context に何もセットしない
 
