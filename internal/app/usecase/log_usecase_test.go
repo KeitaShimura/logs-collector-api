@@ -1,77 +1,34 @@
 package usecase_test
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/app/usecase"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通エラー定義
 var (
-	errMockDB              = errors.New("db error")
-	errMockLogsNil         = errors.New("mock GetLogs returned nil logs")
-	errMockLogsTypeInvalid = errors.New("mock GetLogs type assertion failed")
-	ErrInvalidTimeZone     = errors.New("invalid time zone")
+	errMockDB = errors.New("db error")
 )
-
-// --- Mocks ---
-
-// mockLogRepository は LogRepository を模倣するモック構造体
-type mockLogRepository struct{ mock.Mock }
-
-// SendLog はログの永続化処理を模倣する
-func (m *mockLogRepository) SendLog(ctx context.Context, log *model.Log) error {
-	args := m.Called(ctx, log)
-
-	if err := args.Error(0); err != nil {
-		return fmt.Errorf("mock SendLog error: %w", err)
-	}
-
-	return nil
-}
-
-// GetLogs はログ検索処理を模倣する
-func (m *mockLogRepository) GetLogs(
-	ctx context.Context,
-	service, level string,
-	limit, offset int,
-) ([]model.Log, error) {
-	args := m.Called(ctx, service, level, limit, offset)
-
-	if args.Get(0) == nil {
-		return nil, fmt.Errorf("%w", errMockLogsNil)
-	}
-
-	logs, ok := args.Get(0).([]model.Log)
-	if !ok {
-		return nil, fmt.Errorf("%w: got=%T", errMockLogsTypeInvalid, args.Get(0))
-	}
-
-	if args.Error(1) != nil {
-		return nil, fmt.Errorf("mock GetLogs error: %w", args.Error(1))
-	}
-
-	return logs, nil
-}
 
 // --- setup ---
 
 // setup はモックリポジトリ、モックロガー、ユースケースを初期化して返す
-func setup() (*mockLogRepository, *testutil.MockLogger, *usecase.LogUseCaseImpl) {
-	mockRepo := new(mockLogRepository)
-	mockLogger := testutil.NewMockLogger()
-	uc := usecase.NewLogUseCase(mockRepo, mockLogger)
+func setup() (*appmock.LogRepository, *appmock.Logger, *appmock.Producer, *usecase.LogUseCaseImpl) {
+	mockRepo := new(appmock.LogRepository)
+	mockLogger := appmock.NewLogger()
+	mockProducer := appmock.NewProducer()
+	mockSearcher := appmock.NewLogSearcher()
 
-	return mockRepo, mockLogger, uc
+	uc := usecase.NewLogUseCase(mockRepo, mockProducer, mockSearcher, mockLogger)
+
+	return mockRepo, mockLogger, mockProducer, uc
 }
 
 // --- SendLog Tests ---
@@ -80,7 +37,7 @@ func setup() (*mockLogRepository, *testutil.MockLogger, *usecase.LogUseCaseImpl)
 func TestLogUseCase_SendLog_Success(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, logUseCase := setup()
+	mockRepo, logger, producer, logUseCase := setup()
 
 	// テスト用の正常なログデータを準備
 	log := &model.Log{
@@ -101,6 +58,10 @@ func TestLogUseCase_SendLog_Success(t *testing.T) {
 	require.NoError(t, err)
 	mockRepo.AssertExpectations(t)
 
+	// ログ送信確認
+	require.Len(t, producer.PublishedMessages, 1)
+	require.Equal(t, "a4dcd4a8-2fb7-4c6b-bb02-54a5beedee45", producer.PublishedMessages[0].ID)
+
 	// ログが保存前後で2回記録されていることを確認
 	// 保存前のログと保存後のログがそれぞれ1回ずつ記録される
 	require.Len(t, logger.Infos, 1)
@@ -111,7 +72,7 @@ func TestLogUseCase_SendLog_Success(t *testing.T) {
 func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, logUseCase := setup()
+	mockRepo, logger, producer, logUseCase := setup()
 
 	// エラーをシミュレートするためのログデータを準備
 	log := &model.Log{
@@ -138,6 +99,9 @@ func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 	// エラーログが1件記録されていることを確認
 	require.Len(t, logger.Errors, 1)
 	require.Contains(t, logger.Errors[0].Msg, "Failed to save log entry")
+
+	// NATSには送信されない
+	require.Empty(t, producer.PublishedMessages)
 }
 
 // --- GetLogs Tests ---
@@ -146,7 +110,7 @@ func TestLogUseCase_SendLog_RepositoryError(t *testing.T) {
 func TestLogUseCase_GetLogs_Success(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, logUseCase := setup()
+	mockRepo, logger, _, logUseCase := setup()
 
 	// 期待するログデータ
 	expected := []model.Log{{
@@ -177,7 +141,7 @@ func TestLogUseCase_GetLogs_Success(t *testing.T) {
 func TestLogUseCase_GetLogs_RepositoryError(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, logger, logUseCase := setup()
+	mockRepo, logger, _, logUseCase := setup()
 
 	// リポジトリでエラーを返すようにモック
 	mockRepo.On("GetLogs", ctx, "user2", "INFO", 10, 0).Return([]model.Log(nil), errMockDB)
@@ -198,7 +162,7 @@ func TestLogUseCase_GetLogs_RepositoryError(t *testing.T) {
 func TestLogUseCase_GetLogs_NotFound(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	mockRepo, _, logUseCase := setup()
+	mockRepo, _, _, logUseCase := setup()
 
 	// GetLogs が空のログリストを返すようにモック
 	mockRepo.On("GetLogs", ctx, "user3", "INFO", 10, 0).Return([]model.Log{}, nil)
