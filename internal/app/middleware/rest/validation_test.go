@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	restmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/rest"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通エラー定義
@@ -60,7 +60,7 @@ func TestValidationMiddlewareSendLog_ValidRequest(t *testing.T) {
 	ctx := echoServer.NewContext(req, resp)
 
 	// モックロガーとミドルウェア適用
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	mw := restmw.ValidationMiddlewareSendLog(mockLogger)
 	handler := mw(func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
@@ -91,7 +91,7 @@ func TestValidationMiddlewareSendLog_ReadBodyError(t *testing.T) {
 	ctx := echoServer.NewContext(req, resp)
 
 	// モックロガー
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	mw := restmw.ValidationMiddlewareSendLog(mockLogger)
 	handler := mw(func(c echo.Context) error {
@@ -123,7 +123,7 @@ func TestValidationMiddlewareSendLog_InvalidJSON(t *testing.T) {
 	ctx := echoServer.NewContext(req, resp)
 
 	// ミドルウェア適用
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	mw := restmw.ValidationMiddlewareSendLog(mockLogger)
 	handler := mw(func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
@@ -166,7 +166,7 @@ func TestValidationMiddlewareSendLog_InvalidRequest(t *testing.T) {
 	resp := httptest.NewRecorder()
 	ctx := echoServer.NewContext(req, resp)
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	mw := restmw.ValidationMiddlewareSendLog(mockLogger)
 	handler := mw(func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
@@ -196,7 +196,7 @@ func TestValidationMiddlewareGetLogs_Valid(t *testing.T) {
 	resp := httptest.NewRecorder()
 	ctx := e.NewContext(req, resp)
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	mw := restmw.ValidationMiddlewareGetLogs(mockLogger)
 
 	handler := mw(func(c echo.Context) error {
@@ -226,7 +226,7 @@ func TestValidationMiddlewareGetLogs_InvalidLimit(t *testing.T) {
 	resp := httptest.NewRecorder()
 	ctx := echoServer.NewContext(req, resp)
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	mw := restmw.ValidationMiddlewareGetLogs(mockLogger)
 
 	handler := mw(func(c echo.Context) error {

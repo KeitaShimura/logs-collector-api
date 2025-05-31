@@ -12,6 +12,7 @@ import (
 
 	grpcmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/grpc"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
@@ -19,7 +20,7 @@ import (
 func TestValidationInterceptor_UnknownType(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	// 対象外の型 → handlerがそのまま呼ばれる
@@ -36,7 +37,7 @@ func TestValidationInterceptor_UnknownType(t *testing.T) {
 func TestValidationInterceptor_SendLogRequest_Valid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	req := &pb.SendLogRequest{
@@ -63,7 +64,7 @@ func TestValidationInterceptor_SendLogRequest_Valid(t *testing.T) {
 func TestValidationInterceptor_SendLogRequest_Invalid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	// TraceIdが空 → バリデーションエラーになるはず
@@ -97,7 +98,7 @@ func TestValidationInterceptor_SendLogRequest_Invalid(t *testing.T) {
 func TestValidationInterceptor_GetLogsRequest_Valid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	req := &pb.GetLogsRequest{
@@ -122,7 +123,7 @@ func TestValidationInterceptor_GetLogsRequest_Valid(t *testing.T) {
 func TestValidationInterceptor_GetLogsRequest_Invalid(t *testing.T) {
 	t.Parallel()
 
-	logger := testutil.NewMockLogger()
+	logger := appmock.NewLogger()
 	interceptor := grpcmw.ValidationInterceptor(logger)
 
 	// Limit が負 → バリデーションエラー
