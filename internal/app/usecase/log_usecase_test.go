@@ -62,8 +62,7 @@ func TestLogUseCase_SendLog_Success(t *testing.T) {
 	require.Len(t, producer.PublishedMessages, 1)
 	require.Equal(t, "a4dcd4a8-2fb7-4c6b-bb02-54a5beedee45", producer.PublishedMessages[0].ID)
 
-	// ログが保存前後で2回記録されていることを確認
-	// 保存前のログと保存後のログがそれぞれ1回ずつ記録される
+	// ログ保存後に1件のInfoログが記録されていることを確認
 	require.Len(t, logger.Infos, 1)
 	require.Contains(t, logger.Infos[0].Msg, "Log entry saved successfully")
 }
