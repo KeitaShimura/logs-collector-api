@@ -20,19 +20,22 @@ func ValidationInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
-		_ *grpc.UnaryServerInfo,
+		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
 		switch typedReq := req.(type) {
 		case *pb.SendLogRequest:
-			log.Info("ValidationInterceptor: SendLogRequest received")
+			log.Info("validation: received SendLogRequest", "method", info.FullMethod)
 
 			if err := middleware.ValidateSendLogRequest(typedReq); err != nil {
-				log.Warn("SendLog validation failed", "error", err)
+				log.Warn("validation: SendLogRequest validation failed", "method", info.FullMethod, "error", err)
 
 				return nil, status.Error(codes.InvalidArgument, err.Error())
 			}
+
 		case *pb.GetLogsRequest:
+			log.Info("validation: received GetLogsRequest", "method", info.FullMethod)
+
 			err := middleware.ValidateGetLogsRequest(&helper.QueryParams{
 				Service: typedReq.GetService(),
 				Level:   typedReq.GetLevel(),
@@ -40,12 +43,13 @@ func ValidationInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 				Offset:  int(typedReq.GetOffset()),
 			})
 			if err != nil {
-				log.Warn("GetLogs validation failed", "error", err)
+				log.Warn("validation: GetLogsRequest validation failed", "method", info.FullMethod, "error", err)
 
 				return nil, status.Error(codes.InvalidArgument, err.Error())
 			}
+
 		default:
-			log.Warn("ValidationInterceptor: unknown request type", "type", fmt.Sprintf("%T", req))
+			log.Warn("validation: unknown request type", "method", info.FullMethod, "type", fmt.Sprintf("%T", req))
 		}
 
 		return handler(ctx, req)
