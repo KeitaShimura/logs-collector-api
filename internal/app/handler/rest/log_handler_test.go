@@ -399,21 +399,14 @@ func TestRespondJSON_Success(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"message":"ok"`)
 }
 
-// TestRespondJSON_PanicOnNilContext は nil の Context を渡した場合にpanicすることを確認するテスト
-func TestRespondJSON_PanicOnNilContext(t *testing.T) {
+// nil の echo.Context を渡した場合に適切なエラーを返すことを確認する
+func TestRespondJSON_NilContext(t *testing.T) {
 	t.Parallel()
 
-	// panicが発生するか確認
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("expected panic but code did not panic")
-		}
-	}()
+	err := rest.RespondJSON(nil, http.StatusOK, map[string]string{"message": "ok"})
 
-	// nil Contextを渡す（ここでpanicが発生するはず）
-	if err := rest.RespondJSON(nil, http.StatusOK, map[string]string{"message": "ok"}); err != nil {
-		t.Fatalf("failed to respond json: %v", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "echo context is nil")
 }
 
 // TestParseTimestamp_Empty は空文字列が渡された場合に現在時刻が返ることを確認するテスト

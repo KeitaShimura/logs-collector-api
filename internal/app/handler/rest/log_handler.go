@@ -16,6 +16,9 @@ import (
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
+// 共通エラー定義
+var ErrNilEchoContext = errors.New("echo context is nil")
+
 // LogHandler はログ関連の REST リクエストを処理するハンドラー構造体
 type LogHandler struct {
 	logUseCase usecase.LogUseCase
@@ -192,6 +195,10 @@ func (h *LogHandler) GetLogs(echoCtx echo.Context) error {
 
 // RespondJSON はJSONでレスポンスを返しつつ、内部エラーをラップして返す
 func RespondJSON(echoCtx echo.Context, code int, body interface{}) error {
+	if echoCtx == nil {
+		return fmt.Errorf("%w", ErrNilEchoContext)
+	}
+
 	if jsonErr := echoCtx.JSON(code, body); jsonErr != nil {
 		return fmt.Errorf("failed to return JSON response: %w", jsonErr)
 	}
