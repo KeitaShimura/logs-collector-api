@@ -16,7 +16,7 @@ import (
 	pb "github.com/KeitaShimura/logs-collector-protos/go/logs/v1"
 )
 
-// TestValidationInterceptor_UnknownType は、バリデーション対象外の型が渡された場合にハンドラがそのまま実行されることを検証する
+// TestValidationInterceptor_UnknownType は、バリデーション対象外の型が渡された場合にハンドラがそのまま実行され、警告ログが出力されることを検証する
 func TestValidationInterceptor_UnknownType(t *testing.T) {
 	t.Parallel()
 
@@ -30,7 +30,10 @@ func TestValidationInterceptor_UnknownType(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "passed", resp)
-	require.Empty(t, logger.Warns) // 警告ログが出ていないことも確認
+
+	// ログ出力の検証
+	require.Len(t, logger.Warns, 1)
+	require.Contains(t, logger.Warns[0].Msg, "ValidationInterceptor: unknown request type")
 }
 
 // TestValidationInterceptor_SendLogRequest_Valid は、SendLogRequest が正しい場合にハンドラが正常に実行されることを検証する
