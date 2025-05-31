@@ -3,6 +3,7 @@ package grpcmw
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -24,6 +25,8 @@ func ValidationInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 	) (interface{}, error) {
 		switch typedReq := req.(type) {
 		case *pb.SendLogRequest:
+			log.Info("ValidationInterceptor: SendLogRequest received")
+
 			if err := middleware.ValidateSendLogRequest(typedReq); err != nil {
 				log.Warn("SendLog validation failed", "error", err)
 
@@ -41,6 +44,8 @@ func ValidationInterceptor(log logger.Logger) grpc.UnaryServerInterceptor {
 
 				return nil, status.Error(codes.InvalidArgument, err.Error())
 			}
+		default:
+			log.Warn("ValidationInterceptor: unknown request type", "type", fmt.Sprintf("%T", req))
 		}
 
 		return handler(ctx, req)
