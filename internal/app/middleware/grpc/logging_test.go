@@ -12,6 +12,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/app/middleware"
 	grpcmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/grpc"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // TestLoggingInterceptor_InfoLog は gRPC 呼び出しが正常に完了したときに Info ログが出力されることを確認する
@@ -19,7 +20,7 @@ func TestLoggingInterceptor_InfoLog(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーとインターセプターを準備
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	interceptor := grpcmw.LoggingInterceptor(mockLogger)
 
 	// context にメタデータを設定（LoggingHandler 内で使用される）
@@ -77,7 +78,7 @@ func TestLoggingInterceptor_ErrorLog(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーとインターセプターを準備
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	interceptor := grpcmw.LoggingInterceptor(mockLogger)
 
 	// context にメタデータを設定（LoggingHandler 内で使用される）

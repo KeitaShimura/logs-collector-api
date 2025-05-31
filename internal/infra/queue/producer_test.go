@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/infra/queue"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通エラー定義
@@ -47,7 +47,7 @@ func TestProducer_Publish_Success(t *testing.T) {
 		data:          []byte{},
 		err:           nil,
 	}
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	// テスト対象の Producer を生成
 	producer := &queue.Producer{
@@ -95,7 +95,7 @@ func TestProducer_Publish_PublishError(t *testing.T) {
 		data:          nil,
 		err:           errNATSPublish,
 	}
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	// テスト対象の Producer を生成
 	producer := &queue.Producer{

@@ -15,7 +15,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/repository"
 	"github.com/KeitaShimura/logs-collector-api/internal/infra/db"
 	"github.com/KeitaShimura/logs-collector-api/internal/infra/db/models"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // 共通エラー定義
@@ -27,7 +27,7 @@ var (
 // setupDBTestWithLogger はモックDB・ロガー付きリポジトリ・クリーンアップ関数を返すテスト用のヘルパー関数
 //
 //nolint:ireturn // クリーンアーキテクチャのため命名を維持
-func setupDBTestWithLogger(t *testing.T) (repository.LogRepository, sqlmock.Sqlmock, *testutil.MockLogger, func()) {
+func setupDBTestWithLogger(t *testing.T) (repository.LogRepository, sqlmock.Sqlmock, *appmock.Logger, func()) {
 	t.Helper()
 
 	dbConn, mock, err := sqlmock.New()
@@ -35,7 +35,7 @@ func setupDBTestWithLogger(t *testing.T) (repository.LogRepository, sqlmock.Sqlm
 
 	cleanup := func() { dbConn.Close() }
 
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 	repo := db.NewLogRepository(dbConn, mockLogger)
 
 	return repo, mock, mockLogger, cleanup

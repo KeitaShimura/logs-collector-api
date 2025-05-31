@@ -12,6 +12,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/app/middleware"
 	restmw "github.com/KeitaShimura/logs-collector-api/internal/app/middleware/rest"
 	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // TestLoggingMiddleware_InfoLogEmitted は正常系リクエストで Info ログが出力されることを確認する
@@ -19,7 +20,7 @@ func TestLoggingMiddleware_InfoLogEmitted(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーを使ってログ出力を確認
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	echoServer := echo.New()
 	echoServer.Use(restmw.LoggingMiddleware(mockLogger))
@@ -78,7 +79,7 @@ func TestLoggingMiddleware_ErrorLogEmitted(t *testing.T) {
 	t.Parallel()
 
 	// モックロガーを準備
-	mockLogger := testutil.NewMockLogger()
+	mockLogger := appmock.NewLogger()
 
 	echoServer := echo.New()
 	echoServer.Use(restmw.LoggingMiddleware(mockLogger))

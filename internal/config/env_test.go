@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/config"
-	"github.com/KeitaShimura/logs-collector-api/internal/testutil"
+	appmock "github.com/KeitaShimura/logs-collector-api/internal/testutil/mock"
 )
 
 // TestNewConfig_SuccessWithDefaults はすべての必須環境変数が揃っており、デフォルト値が適用される場合のテスト
@@ -17,7 +17,7 @@ func TestNewConfig_SuccessWithDefaults(t *testing.T) {
 	t.Setenv("DB_PASS", "pass")
 	// DB_SSLMODE / DB_TIMEZONE は未定義 → envDefaultが使われる
 
-	log := testutil.NewMockLogger()
+	log := appmock.NewLogger()
 
 	cfg, err := config.NewConfig(log)
 	if err != nil {
@@ -35,7 +35,7 @@ func TestNewConfig_SuccessWithDefaults(t *testing.T) {
 
 // TestNewConfig_MissingRequiredEnv は必須環境変数（DB_HOST）が設定されていない場合のエラーテスト
 func TestNewConfig_MissingRequiredEnv(t *testing.T) {
-	os.Clearenv() // ✅ これで全環境変数をクリア
+	os.Clearenv() // 全環境変数をクリア
 
 	// 必須の一部だけ設定（DB_HOST は設定しない）
 	t.Setenv("DB_PORT", "5432")
@@ -43,7 +43,7 @@ func TestNewConfig_MissingRequiredEnv(t *testing.T) {
 	t.Setenv("DB_USER", "user")
 	t.Setenv("DB_PASS", "pass")
 
-	log := testutil.NewMockLogger()
+	log := appmock.NewLogger()
 	cfg, err := config.NewConfig(log)
 
 	if err == nil {
@@ -65,7 +65,7 @@ func TestNewConfig_WithAllEnvDefined(t *testing.T) {
 	t.Setenv("DB_SSLMODE", "require")
 	t.Setenv("DB_TIMEZONE", "UTC")
 
-	log := testutil.NewMockLogger()
+	log := appmock.NewLogger()
 
 	cfg, err := config.NewConfig(log)
 	if err != nil {
