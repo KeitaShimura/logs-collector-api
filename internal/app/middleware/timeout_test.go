@@ -43,29 +43,6 @@ func TestWithTimeout_Success(t *testing.T) {
 	require.Empty(t, mockLogger.Warns, "no warning logs should be emitted")
 }
 
-// TestWithTimeout_HandlerReturnsError は handler が即座にエラーを返すケースを検証する。
-// onTimeout は呼び出されず、返されたエラーがそのまま返却される。
-func TestWithTimeout_HandlerReturnsError(t *testing.T) {
-	t.Parallel()
-
-	mockLogger := appmock.NewLogger()
-	expectedErr := errHandlerFailure
-
-	err := middleware.WithTimeout(
-		t.Context(),
-		mockLogger,
-		func(_ context.Context) error {
-			return expectedErr // 処理内でエラーを返す
-		},
-		func() error {
-			return errShouldNotBeCalled // 呼ばれてはいけない
-		},
-	)
-
-	require.ErrorIs(t, err, expectedErr)
-	require.Empty(t, mockLogger.Warns, 0)
-}
-
 // TestWithTimeout_TimeoutOccurs は handler が処理に時間がかかり、タイムアウトに到達するケースを検証する。
 // onTimeout が呼び出され、その返り値が最終的なエラーとして返却される。
 func TestWithTimeout_TimeoutOccurs(t *testing.T) {
@@ -95,6 +72,29 @@ func TestWithTimeout_TimeoutOccurs(t *testing.T) {
 
 	require.Len(t, mockLogger.Warns, 1)
 	require.Equal(t, "timeout exceeded", mockLogger.Warns[0].Msg)
+}
+
+// TestWithTimeout_HandlerReturnsError は handler が即座にエラーを返すケースを検証する。
+// onTimeout は呼び出されず、返されたエラーがそのまま返却される。
+func TestWithTimeout_HandlerReturnsError(t *testing.T) {
+	t.Parallel()
+
+	mockLogger := appmock.NewLogger()
+	expectedErr := errHandlerFailure
+
+	err := middleware.WithTimeout(
+		t.Context(),
+		mockLogger,
+		func(_ context.Context) error {
+			return expectedErr // 処理内でエラーを返す
+		},
+		func() error {
+			return errShouldNotBeCalled // 呼ばれてはいけない
+		},
+	)
+
+	require.ErrorIs(t, err, expectedErr)
+	require.Empty(t, mockLogger.Warns, 0)
 }
 
 // TestWithTimeout_ContextCanceled は、親 context が事前にキャンセルされた場合の動作を検証する。
