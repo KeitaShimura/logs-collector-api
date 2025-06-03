@@ -74,9 +74,9 @@ func TestWithTimeout_TimeoutOccurs(t *testing.T) {
 	require.Equal(t, "timeout exceeded", mockLogger.Warns[0].Msg)
 }
 
-// TestWithTimeout_HandlerReturnsError は handler が即座にエラーを返すケースを検証する。
+// TestWithTimeout_HandlerError は handler が即座にエラーを返すケースを検証する。
 // onTimeout は呼び出されず、返されたエラーがそのまま返却される。
-func TestWithTimeout_HandlerReturnsError(t *testing.T) {
+func TestWithTimeout_HandlerError(t *testing.T) {
 	t.Parallel()
 
 	mockLogger := appmock.NewLogger()
