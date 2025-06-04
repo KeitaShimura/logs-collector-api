@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 
@@ -35,10 +36,16 @@ type Config struct {
 	// --- Elasticsearch 設定 ---
 	ElasticsearchURL string `env:"ELASTICSEARCH_URL" envDefault:"http://localhost:9200"`
 
-	// --- サーバーポート設定 ---
+	// --- サーバーポート/バインド設定 ---
 	GRPCPort     string `env:"GRPC_PORT"      envDefault:"50051"`
+	GRPCBindAddr string `env:"GRPC_BIND_ADDR" envDefault:"0.0.0.0"`
 	RESTPort     string `env:"REST_PORT"      envDefault:"8080"`
-	GRPCBindAddr string `env:"GRPC_BIND_ADDR" envDefault:"0.0.0.0"` // 柔軟なバインド対応（localhost or 全体）
+	RESTBindAddr string `env:"REST_BIND_ADDR" envDefault:"0.0.0.0"`
+
+	// --- タイムアウト/ログ設定 ---
+	GRPCTimeout     time.Duration `env:"GRPC_TIMEOUT"       envDefault:"2s"`
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT"   envDefault:"10s"`
+	LogLevel        string        `env:"LOG_LEVEL"          envDefault:"INFO"`
 }
 
 // NewConfig は環境変数から設定値を読み込み、Config 構造体を返す
@@ -50,28 +57,24 @@ func NewConfig(log logger.Logger) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse env config: %w", err)
 	}
 
-	// --- 必須項目チェック（明示的に required:"true" の再確認） ---
+	// --- 必須項目チェック ---
 	if cfg.DBHost == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBHostRequired)
 	}
-
 	if cfg.DBPort == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBPortRequired)
 	}
-
 	if cfg.DBName == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBNameRequired)
 	}
-
 	if cfg.DBUser == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBUserRequired)
 	}
-
 	if cfg.DBPassword == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBPasswordRequired)
 	}
 
-	// ログ出力（必要な情報のみ出力、パスワードなどは含めない）
+	// ログ出力（パスワードは出さない）
 	log.Info("Configuration loaded successfully",
 		"DBHost", cfg.DBHost,
 		"DBPort", cfg.DBPort,
@@ -83,6 +86,10 @@ func NewConfig(log logger.Logger) (*Config, error) {
 		"GRPCPort", cfg.GRPCPort,
 		"GRPCBindAddr", cfg.GRPCBindAddr,
 		"RESTPort", cfg.RESTPort,
+		"RESTBindAddr", cfg.RESTBindAddr,
+		"GRPCTimeout", cfg.GRPCTimeout.String(),
+		"ShutdownTimeout", cfg.ShutdownTimeout.String(),
+		"LogLevel", cfg.LogLevel,
 	)
 
 	return &cfg, nil
