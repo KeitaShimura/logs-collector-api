@@ -117,6 +117,9 @@ func (logger *LoggerImpl) Error(msg string, err error, args ...any) {
 	logger.slog.Error(msg, args...)
 }
 
+// ParseLevel は文字列で指定されたログレベルを slog.Level 型に変換して返す。
+// 対応しているレベルは "DEBUG"、"WARN"、"ERROR" で、
+// その他の値はデフォルトで LevelInfo を返す。
 func ParseLevel(level string) slog.Level {
 	switch level {
 	case "DEBUG":
