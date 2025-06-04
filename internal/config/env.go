@@ -9,7 +9,7 @@ import (
 	"github.com/KeitaShimura/logs-collector-api/internal/logger"
 )
 
-// 共通エラー定義（DB用）
+// 共通エラー定義
 var (
 	errDBHostRequired     = errors.New("DB_HOST is required but not set")
 	errDBPortRequired     = errors.New("DB_PORT is required but not set")
