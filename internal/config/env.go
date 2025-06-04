@@ -36,8 +36,9 @@ type Config struct {
 	ElasticsearchURL string `env:"ELASTICSEARCH_URL" envDefault:"http://localhost:9200"`
 
 	// --- サーバーポート設定 ---
-	GRPCPort string `env:"GRPC_PORT" envDefault:"50051"`
-	RESTPort string `env:"REST_PORT" envDefault:"8080"`
+	GRPCPort     string `env:"GRPC_PORT"      envDefault:"50051"`
+	RESTPort     string `env:"REST_PORT"      envDefault:"8080"`
+	GRPCBindAddr string `env:"GRPC_BIND_ADDR" envDefault:"0.0.0.0"` // 柔軟なバインド対応（localhost or 全体）
 }
 
 // NewConfig は環境変数から設定値を読み込み、Config 構造体を返す
@@ -80,6 +81,7 @@ func NewConfig(log logger.Logger) (*Config, error) {
 		"NATSURL", cfg.NATSURL,
 		"ElasticsearchURL", cfg.ElasticsearchURL,
 		"GRPCPort", cfg.GRPCPort,
+		"GRPCBindAddr", cfg.GRPCBindAddr,
 		"RESTPort", cfg.RESTPort,
 	)
 
