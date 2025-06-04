@@ -116,3 +116,16 @@ func (logger *LoggerImpl) Error(msg string, err error, args ...any) {
 
 	logger.slog.Error(msg, args...)
 }
+
+func ParseLevel(level string) slog.Level {
+	switch level {
+	case "DEBUG":
+		return LevelDebug
+	case "WARN":
+		return LevelWarn
+	case "ERROR":
+		return LevelError
+	default:
+		return LevelInfo
+	}
+}
