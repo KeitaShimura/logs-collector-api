@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/mock"
@@ -23,10 +24,12 @@ import (
 func TestSwaggerRoute(t *testing.T) {
 	t.Parallel()
 
+	restTimeout := 3 * time.Second // テスト用の REST タイムアウト
+
 	// モックのユースケースとロガーを準備
 	mockUC := new(appmock.LogUseCase)
 	mockLogger := appmock.NewLogger()
-	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
+	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger, restTimeout)
 
 	// Swaggerドキュメント用のGETリクエストを作成
 	req := httptest.NewRequest(http.MethodGet, "/swagger/index.html", nil)
@@ -43,12 +46,14 @@ func TestSwaggerRoute(t *testing.T) {
 func TestPostLogsRoute_Success(t *testing.T) {
 	t.Parallel()
 
+	restTimeout := 3 * time.Second // テスト用の REST タイムアウト
+
 	// モックユースケースのSendLogを成功レスポンスに設定
 	mockUC := new(appmock.LogUseCase)
 	mockUC.On("SendLog", mock.Anything, mock.AnythingOfType("*model.Log")).Return(nil)
 
 	mockLogger := appmock.NewLogger()
-	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
+	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger, restTimeout)
 
 	// テスト用のPOSTリクエストボディを作成
 	reqBody := &pb.SendLogRequest{
@@ -92,10 +97,12 @@ func TestPostLogsRoute_Success(t *testing.T) {
 func TestPostLogsRoute_NotFound(t *testing.T) {
 	t.Parallel()
 
+	restTimeout := 3 * time.Second // テスト用の REST タイムアウト
+
 	// モックのユースケースとロガーを準備
 	mockUC := new(appmock.LogUseCase)
 	mockLogger := appmock.NewLogger()
-	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
+	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger, restTimeout)
 
 	// 存在しないPOSTルートへのリクエストを作成
 	req := httptest.NewRequest(http.MethodPost, "/api/unknown", nil)
@@ -112,6 +119,8 @@ func TestPostLogsRoute_NotFound(t *testing.T) {
 func TestGetLogsRoute_Success(t *testing.T) {
 	t.Parallel()
 
+	restTimeout := 3 * time.Second // テスト用の REST タイムアウト
+
 	// モックユースケースのGetLogsを成功レスポンスに設定
 	mockUC := new(appmock.LogUseCase)
 	mockUC.On("GetLogs",
@@ -123,7 +132,7 @@ func TestGetLogsRoute_Success(t *testing.T) {
 	).Return([]model.Log{}, nil)
 
 	mockLogger := appmock.NewLogger()
-	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
+	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger, restTimeout)
 
 	// GETリクエストを作成
 	req := httptest.NewRequest(http.MethodGet, "/api/logs?limit=100&offset=0&service=test-service&level=INFO", nil)
@@ -148,10 +157,12 @@ func TestGetLogsRoute_Success(t *testing.T) {
 func TestGetLogsRoute_NotFound(t *testing.T) {
 	t.Parallel()
 
+	restTimeout := 3 * time.Second // テスト用の REST タイムアウト
+
 	// モックのユースケースとロガーを準備
 	mockUC := new(appmock.LogUseCase)
 	mockLogger := appmock.NewLogger()
-	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger)
+	echoServer := server.NewRouter(rest.NewLogHandler(mockUC, mockLogger), mockLogger, restTimeout)
 
 	// 存在しないGETルートへのリクエストを作成
 	req := httptest.NewRequest(http.MethodGet, "/api/invalid", nil)

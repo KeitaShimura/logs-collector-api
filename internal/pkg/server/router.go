@@ -1,6 +1,8 @@
 package server
 
 import (
+	"time"
+
 	"github.com/labstack/echo/v4"
 	echoSwagger "github.com/swaggo/echo-swagger"
 
@@ -13,12 +15,13 @@ import (
 )
 
 // NewRouter は Echo サーバーのルーターを初期化し、エンドポイントを登録する
-func NewRouter(logHandler *rest.LogHandler, logger logger.Logger) *echo.Echo {
+func NewRouter(logHandler *rest.LogHandler, logger logger.Logger, restTimeout time.Duration) *echo.Echo {
 	// Echo インスタンスを作成
 	echoServer := echo.New()
 
 	// 共通ミドルウェア
 	echoServer.Use(restmw.LoggingMiddleware(logger))
+	echoServer.Use(restmw.TimeoutMiddleware(restTimeout, logger))
 	echoServer.Use(restmw.RecoveryMiddleware(logger))
 
 	// カスタムバリデーターを設定（Echo のバリデーション用）
