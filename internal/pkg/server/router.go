@@ -14,10 +14,8 @@ import (
 	customValidator "github.com/KeitaShimura/logs-collector-api/internal/pkg/validator"
 )
 
-const restTimeout = 3 * time.Second
-
 // NewRouter は Echo サーバーのルーターを初期化し、エンドポイントを登録する
-func NewRouter(logHandler *rest.LogHandler, logger logger.Logger) *echo.Echo {
+func NewRouter(logHandler *rest.LogHandler, logger logger.Logger, restTimeout time.Duration) *echo.Echo {
 	// Echo インスタンスを作成
 	echoServer := echo.New()
 
