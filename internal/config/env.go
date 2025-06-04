@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/caarlos0/env/v11"
 
@@ -43,9 +42,10 @@ type Config struct {
 	RESTBindAddr string `env:"REST_BIND_ADDR" envDefault:"0.0.0.0"`
 
 	// --- タイムアウト/ログ設定 ---
-	GRPCTimeout     time.Duration `env:"GRPC_TIMEOUT"       envDefault:"2s"`
-	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT"   envDefault:"10s"`
-	LogLevel        string        `env:"LOG_LEVEL"          envDefault:"INFO"`
+	GRPCTimeoutSec     int    `env:"GRPC_TIMEOUT_SEC"     envDefault:"2"`
+	RESTTimeoutSec     int    `env:"REST_TIMEOUT_SEC"     envDefault:"3"`
+	ShutdownTimeoutSec int    `env:"SHUTDOWN_TIMEOUT_SEC" envDefault:"10"`
+	LogLevel           string `env:"LOG_LEVEL"            envDefault:"INFO"`
 }
 
 // NewConfig は環境変数から設定値を読み込み、Config 構造体を返す
@@ -61,15 +61,19 @@ func NewConfig(log logger.Logger) (*Config, error) {
 	if cfg.DBHost == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBHostRequired)
 	}
+
 	if cfg.DBPort == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBPortRequired)
 	}
+
 	if cfg.DBName == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBNameRequired)
 	}
+
 	if cfg.DBUser == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBUserRequired)
 	}
+
 	if cfg.DBPassword == "" {
 		return nil, fmt.Errorf("validation error: %w", errDBPasswordRequired)
 	}
@@ -79,6 +83,7 @@ func NewConfig(log logger.Logger) (*Config, error) {
 		"DBHost", cfg.DBHost,
 		"DBPort", cfg.DBPort,
 		"DBName", cfg.DBName,
+		"DBUser", cfg.DBUser,
 		"DBSSLMode", cfg.DBSSLMode,
 		"DBTimeZone", cfg.DBTimeZone,
 		"NATSURL", cfg.NATSURL,
@@ -87,8 +92,9 @@ func NewConfig(log logger.Logger) (*Config, error) {
 		"GRPCBindAddr", cfg.GRPCBindAddr,
 		"RESTPort", cfg.RESTPort,
 		"RESTBindAddr", cfg.RESTBindAddr,
-		"GRPCTimeout", cfg.GRPCTimeout.String(),
-		"ShutdownTimeout", cfg.ShutdownTimeout.String(),
+		"GRPCTimeout", cfg.GRPCTimeoutSec,
+		"RESTTimeoutSec", cfg.RESTTimeoutSec,
+		"ShutdownTimeout", cfg.ShutdownTimeoutSec,
 		"LogLevel", cfg.LogLevel,
 	)
 
