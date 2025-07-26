@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aarondl/null/v8"
+	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3" // テスト用のインメモリDBで使用する SQLite ドライバ
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/infra/db/models"
 )
