@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.4.1
-	github.com/KeitaShimura/logs-collector-protos/go v0.0.2
+	github.com/KeitaShimura/logs-collector-protos/go v0.0.3
 	github.com/aarondl/null/v8 v8.1.3
 	github.com/aarondl/sqlboiler/v4 v4.19.5
 	github.com/aarondl/strmangle v0.0.9
@@ -20,7 +20,7 @@ require (
 	github.com/nats-io/nats.go v1.43.0
 	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/echo-swagger v1.4.1
-	github.com/swaggo/swag v1.16.5
+	github.com/swaggo/swag v1.16.6
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 )
