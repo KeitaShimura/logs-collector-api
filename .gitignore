@@ -26,7 +26,8 @@ go.work
 
 # End of https://www.toptal.com/developers/gitignore/api/go
 
-docker-compose.*
+docker-compose.yaml
+docker-compose.yml
 sqlboiler.toml
 *.envrc
 *.env
