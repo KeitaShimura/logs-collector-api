@@ -1,0 +1,52 @@
+services:
+  logs-collector-api:
+    container_name: logs-collector-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "50051:50051" # gRPC
+      - "8080:8080" # REST
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=logs_collector
+      - DB_USER=logs_collector_test
+      - DB_PASS=logs_collector_test
+    depends_on:
+      - db
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: logs_collector_test
+      POSTGRES_PASSWORD: logs_collector_test
+      POSTGRES_DB: logs_collector
+    ports:
+      - "5432:5432"
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.18.1
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: curl -s http://localhost:9200 || exit 1
+      interval: 10s
+      retries: 5
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+    command: -js # JetStream 有効化
+volumes:
+  esdata:
+# Optional: secrets 使う場合
+secrets:
+  GITHUB_TOKEN:
+    environment: GITHUB_TOKEN

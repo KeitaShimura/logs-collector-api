@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/aarondl/null/v8"
 	"github.com/stretchr/testify/require"
-	"github.com/volatiletech/null/v8"
 
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/model"
 	"github.com/KeitaShimura/logs-collector-api/internal/domain/repository"

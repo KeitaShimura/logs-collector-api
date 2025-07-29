@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aarondl/sqlboiler/v4/boil"
 	"github.com/elastic/go-elasticsearch/v8"
 	_ "github.com/lib/pq"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 

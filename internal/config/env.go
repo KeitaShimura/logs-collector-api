@@ -30,7 +30,7 @@ type Config struct {
 	DBTimeZone string `env:"DB_TIMEZONE" envDefault:"Asia/Tokyo"`
 
 	// --- NATS 設定 ---
-	NATSURL string `env:"NATS_URL" envDefault:"nats://localhost:4222"`
+	NATSURL string `env:"NATS_URL" envDefault:"nats://nats:4222"`
 
 	// --- Elasticsearch 設定 ---
 	ElasticsearchURL string `env:"ELASTICSEARCH_URL" envDefault:"http://localhost:9200"`
