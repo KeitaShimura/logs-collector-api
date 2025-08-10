@@ -33,7 +33,7 @@ type Config struct {
 	NATSURL string `env:"NATS_URL" envDefault:"nats://nats:4222"`
 
 	// --- Elasticsearch 設定 ---
-	ElasticsearchURL string `env:"ELASTICSEARCH_URL" envDefault:"http://localhost:9200"`
+	ElasticsearchURL string `env:"ELASTICSEARCH_URL" envDefault:"http://elasticsearch:9200"`
 
 	// --- サーバーポート/バインド設定 ---
 	GRPCPort     string `env:"GRPC_PORT"      envDefault:"50051"`
