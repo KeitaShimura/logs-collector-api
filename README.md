@@ -54,25 +54,25 @@ REST および gRPC インターフェースを提供し、各種サービスか
 
 ## 必要な環境変数
 
-| 変数名               | 必須 | デフォルト値          | 説明                        |
-| -------------------- | ---- | --------------------- | --------------------------- |
-| DB_HOST              | 必須 |                       | PostgreSQL ホスト           |
-| DB_PORT              | 必須 |                       | PostgreSQL ポート           |
-| DB_NAME              | 必須 |                       | データベース名              |
-| DB_USER              | 必須 |                       | データベースユーザー        |
-| DB_PASS              | 必須 |                       | データベースパスワード      |
-| DB_SSLMODE           |      | disable               | SSL モード                  |
-| DB_TIMEZONE          |      | Asia/Tokyo            | タイムゾーン                |
-| NATS_URL             |      | nats://nats:4222      | NATS サーバー URL           |
-| ELASTICSEARCH_URL    |      | http://localhost:9200 | Elasticsearch サーバー URL  |
-| GRPC_PORT            |      | 50051                 | gRPC サーバーポート         |
-| GRPC_BIND_ADDR       |      | 0.0.0.0               | gRPC バインドアドレス       |
-| REST_PORT            |      | 8080                  | REST サーバーポート         |
-| REST_BIND_ADDR       |      | 0.0.0.0               | REST バインドアドレス       |
-| GRPC_TIMEOUT_SEC     |      | 2                     | gRPC リクエストタイムアウト |
-| REST_TIMEOUT_SEC     |      | 3                     | REST リクエストタイムアウト |
-| SHUTDOWN_TIMEOUT_SEC |      | 10                    | シャットダウン猶予秒数      |
-| LOG_LEVEL            |      | INFO                  | ログレベル                  |
+| 変数名               | 必須 | デフォルト値              | 説明                        |
+| -------------------- | ---- | ------------------------- | --------------------------- |
+| DB_HOST              | 必須 |                           | PostgreSQL ホスト           |
+| DB_PORT              | 必須 |                           | PostgreSQL ポート           |
+| DB_NAME              | 必須 |                           | データベース名              |
+| DB_USER              | 必須 |                           | データベースユーザー        |
+| DB_PASS              | 必須 |                           | データベースパスワード      |
+| DB_SSLMODE           |      | disable                   | SSL モード                  |
+| DB_TIMEZONE          |      | Asia/Tokyo                | タイムゾーン                |
+| NATS_URL             |      | nats://nats:4222          | NATS サーバー URL           |
+| ELASTICSEARCH_URL    |      | http://elasticsearch:9200 | Elasticsearch サーバー URL  |
+| GRPC_PORT            |      | 50051                     | gRPC サーバーポート         |
+| GRPC_BIND_ADDR       |      | 0.0.0.0                   | gRPC バインドアドレス       |
+| REST_PORT            |      | 8080                      | REST サーバーポート         |
+| REST_BIND_ADDR       |      | 0.0.0.0                   | REST バインドアドレス       |
+| GRPC_TIMEOUT_SEC     |      | 2                         | gRPC リクエストタイムアウト |
+| REST_TIMEOUT_SEC     |      | 3                         | REST リクエストタイムアウト |
+| SHUTDOWN_TIMEOUT_SEC |      | 10                        | シャットダウン猶予秒数      |
+| LOG_LEVEL            |      | INFO                      | ログレベル                  |
 
 ## セットアップ
 
